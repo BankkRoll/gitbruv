@@ -1,77 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, repositories, accounts } from "@/db/schema";
+import { users, repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import git from "isomorphic-git";
 import { createR2Fs, getRepoPrefix } from "@/lib/r2-fs";
-import { scryptAsync } from "@noble/hashes/scrypt.js";
-import { hexToBytes } from "@noble/hashes/utils.js";
 import { revalidateTag } from "next/cache";
-
-function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  return result === 0;
-}
-
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  try {
-    const [salt, key] = hash.split(":");
-    if (!salt || !key) return false;
-
-    const derivedKey = await scryptAsync(password.normalize("NFKC"), salt, {
-      N: 16384,
-      r: 16,
-      p: 1,
-      dkLen: 64,
-    });
-
-    return constantTimeEqual(derivedKey, hexToBytes(key));
-  } catch (err) {
-    console.error("[Git Auth] Password verify error:", err);
-    return false;
-  }
-}
+import { auth } from "@/lib/auth";
 
 async function authenticateUser(authHeader: string | null): Promise<{ id: string; username: string } | null> {
-  if (!authHeader || !authHeader.startsWith("Basic ")) {
-    return null;
-  }
+  if (!authHeader?.startsWith("Basic ")) return null;
 
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = Buffer.from(base64Credentials, "base64").toString("utf-8");
+  const credentials = Buffer.from(authHeader.split(" ")[1], "base64").toString("utf-8");
   const [email, password] = credentials.split(":");
-
-  if (!email || !password) {
-    return null;
-  }
+  if (!email || !password) return null;
 
   try {
+    const result = await auth.api.signInEmail({
+      body: { email, password },
+      asResponse: false,
+    });
+
+    if (!result?.user) return null;
+
     const user = await db.query.users.findFirst({
       where: eq(users.email, email),
     });
 
-    if (!user) {
-      return null;
-    }
-
-    const account = await db.query.accounts.findFirst({
-      where: eq(accounts.userId, user.id),
-    });
-
-    if (!account?.password) {
-      return null;
-    }
-
-    const valid = await verifyPassword(password, account.password);
-    if (!valid) {
-      return null;
-    }
-
-    return { id: user.id, username: user.username };
+    return user ? { id: user.id, username: user.username } : null;
   } catch {
     return null;
   }
