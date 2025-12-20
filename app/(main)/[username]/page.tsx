@@ -148,23 +148,15 @@ export default async function ProfilePage({
         </aside>
 
         <div className="flex-1 min-w-0">
-          <Tabs defaultValue={activeTab} className="w-full">
-            <TabsList className="mb-6 w-full justify-start bg-transparent border-b border-border rounded-none p-0 h-auto">
-              <TabsTrigger
-                value="repositories"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
-                asChild
-              >
+          <Tabs defaultValue={activeTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="repositories" asChild>
                 <Link href={`/${username}`}>
                   <BookOpen className="h-4 w-4" />
                   Repositories
                 </Link>
               </TabsTrigger>
-              <TabsTrigger
-                value="starred"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
-                asChild
-              >
+              <TabsTrigger value="starred" asChild>
                 <Link href={`/${username}?tab=starred`}>
                   <Star className="h-4 w-4" />
                   Starred
@@ -172,13 +164,13 @@ export default async function ProfilePage({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="repositories" className="mt-0">
+            <TabsContent value="repositories">
               <Suspense fallback={<TabSkeleton />}>
                 <RepositoriesTab username={username} />
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="starred" className="mt-0">
+            <TabsContent value="starred">
               <Suspense fallback={<TabSkeleton />}>
                 <StarredTab username={username} />
               </Suspense>
