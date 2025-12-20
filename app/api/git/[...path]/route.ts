@@ -36,18 +36,7 @@ function parseGitPath(pathSegments: string[]): { username: string; repoName: str
 async function getRefsAdvertisement(fs: R2Fs, gitdir: string, service: string): Promise<Buffer> {
   const capabilities =
     service === "git-upload-pack"
-      ? [
-          "multi_ack",
-          "thin-pack",
-          "side-band",
-          "side-band-64k",
-          "ofs-delta",
-          "shallow",
-          "no-progress",
-          "include-tag",
-          "multi_ack_detailed",
-          "symref=HEAD:refs/heads/main",
-        ]
+      ? ["ofs-delta", "shallow", "no-progress", "include-tag", "symref=HEAD:refs/heads/main"]
       : ["report-status", "delete-refs", "ofs-delta"];
 
   const refs: { name: string; oid: string }[] = [];
