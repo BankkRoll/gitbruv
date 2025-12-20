@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { spawn } from "child_process";
-import path from "path";
-import fs from "fs/promises";
-import { withTempRepo } from "@/lib/r2-git-sync";
 import { auth } from "@/lib/auth";
+import git from "isomorphic-git";
+import { createR2Fs, getRepoPrefix } from "@/lib/r2-fs";
 
 async function authenticateUser(authHeader: string | null): Promise<{ id: string; username: string } | null> {
   if (!authHeader || !authHeader.startsWith("Basic ")) {
@@ -44,34 +42,6 @@ async function authenticateUser(authHeader: string | null): Promise<{ id: string
   }
 }
 
-function runGitCommand(command: string, args: string[], cwd: string, input?: Buffer): Promise<{ stdout: Buffer; stderr: Buffer; code: number }> {
-  return new Promise((resolve) => {
-    const proc = spawn(command, args, {
-      cwd,
-      env: { ...process.env, GIT_DIR: cwd },
-    });
-
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-
-    proc.stdout.on("data", (data) => stdout.push(data));
-    proc.stderr.on("data", (data) => stderr.push(data));
-
-    if (input) {
-      proc.stdin.write(input);
-      proc.stdin.end();
-    }
-
-    proc.on("close", (code) => {
-      resolve({
-        stdout: Buffer.concat(stdout),
-        stderr: Buffer.concat(stderr),
-        code: code || 0,
-      });
-    });
-  });
-}
-
 function parseGitPath(pathSegments: string[]): { username: string; repoName: string; action: string | null } | null {
   if (pathSegments.length < 2) return null;
 
@@ -94,6 +64,196 @@ function parseGitPath(pathSegments: string[]): { username: string; repoName: str
   }
 
   return { username, repoName, action };
+}
+
+async function getRefsAdvertisement(fs: any, gitdir: string, service: string): Promise<Buffer> {
+  const capabilities =
+    service === "git-upload-pack"
+      ? [
+          "multi_ack",
+          "thin-pack",
+          "side-band",
+          "side-band-64k",
+          "ofs-delta",
+          "shallow",
+          "no-progress",
+          "include-tag",
+          "multi_ack_detailed",
+          "symref=HEAD:refs/heads/main",
+        ]
+      : ["report-status", "delete-refs", "ofs-delta"];
+
+  const refs: { name: string; oid: string }[] = [];
+
+  try {
+    const branches = await git.listBranches({ fs, gitdir });
+    for (const branch of branches) {
+      const oid = await git.resolveRef({ fs, gitdir, ref: branch });
+      refs.push({ name: `refs/heads/${branch}`, oid });
+    }
+  } catch {}
+
+  try {
+    const tags = await git.listTags({ fs, gitdir });
+    for (const tag of tags) {
+      const oid = await git.resolveRef({ fs, gitdir, ref: tag });
+      refs.push({ name: `refs/tags/${tag}`, oid });
+    }
+  } catch {}
+
+  let head = "";
+  try {
+    head = await git.resolveRef({ fs, gitdir, ref: "HEAD" });
+  } catch {}
+
+  const lines: string[] = [];
+
+  if (refs.length === 0) {
+    const zeroId = "0".repeat(40);
+    const capsLine = `${zeroId} capabilities^{}\0${capabilities.join(" ")}\n`;
+    lines.push(capsLine);
+  } else {
+    const firstRef = head ? { name: "HEAD", oid: head } : refs[0];
+    const capsLine = `${firstRef.oid} ${firstRef.name}\0${capabilities.join(" ")}\n`;
+    lines.push(capsLine);
+
+    for (const ref of refs) {
+      if (ref.name !== firstRef.name || !head) {
+        lines.push(`${ref.oid} ${ref.name}\n`);
+      }
+    }
+  }
+
+  const packets: Buffer[] = [];
+  for (const line of lines) {
+    const len = (line.length + 4).toString(16).padStart(4, "0");
+    packets.push(Buffer.from(len + line));
+  }
+  packets.push(Buffer.from("0000"));
+
+  return Buffer.concat(packets);
+}
+
+async function handleUploadPack(fs: any, gitdir: string, body: Buffer): Promise<Buffer> {
+  const lines = parsePktLines(body);
+  const wants: string[] = [];
+  const haves: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith("want ")) {
+      wants.push(line.slice(5, 45));
+    } else if (line.startsWith("have ")) {
+      haves.push(line.slice(5, 45));
+    }
+  }
+
+  if (wants.length === 0) {
+    return Buffer.from("0000");
+  }
+
+  try {
+    const packfile = await git.packObjects({
+      fs,
+      gitdir,
+      oids: wants,
+    });
+
+    const nakLine = "0008NAK\n";
+    if (!packfile.packfile) {
+      return Buffer.from(nakLine + "0000");
+    }
+    return Buffer.concat([Buffer.from(nakLine), Buffer.from(packfile.packfile)]);
+  } catch (err) {
+    console.error("Pack error:", err);
+    return Buffer.from("0000");
+  }
+}
+
+async function handleReceivePack(fs: any, gitdir: string, body: Buffer): Promise<Buffer> {
+  const packStart = body.indexOf(Buffer.from("PACK"));
+  if (packStart === -1) {
+    return Buffer.from("000eunpack ok\n0000");
+  }
+
+  const commandSection = body.slice(0, packStart);
+  const packData = body.slice(packStart);
+
+  const lines = parsePktLines(commandSection);
+  const updates: { oldOid: string; newOid: string; ref: string }[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/^([0-9a-f]{40}) ([0-9a-f]{40}) (.+)$/);
+    if (match) {
+      updates.push({ oldOid: match[1], newOid: match[2], ref: match[3].replace("\0", "").split(" ")[0] });
+    }
+  }
+
+  try {
+    const packPath = `${gitdir}/objects/pack/pack-temp.pack`;
+    const packDir = `${gitdir}/objects/pack`;
+
+    await fs.promises.mkdir(packDir, { recursive: true }).catch(() => {});
+    await fs.promises.writeFile(packPath, packData);
+
+    const { oids } = await git.indexPack({ fs, dir: gitdir, gitdir, filepath: "objects/pack/pack-temp.pack" });
+    console.log("Indexed objects:", oids.length);
+
+    await fs.promises.unlink(packPath).catch(() => {});
+
+    for (const update of updates) {
+      const refPath = update.ref.startsWith("refs/") ? update.ref : `refs/heads/${update.ref}`;
+      if (update.newOid === "0".repeat(40)) {
+        await fs.promises.unlink(`${gitdir}/${refPath}`).catch(() => {});
+      } else {
+        const refDir = refPath.split("/").slice(0, -1).join("/");
+        await fs.promises.mkdir(`${gitdir}/${refDir}`, { recursive: true }).catch(() => {});
+        await fs.promises.writeFile(`${gitdir}/${refPath}`, update.newOid + "\n");
+      }
+    }
+
+    const response = ["unpack ok"];
+    for (const update of updates) {
+      response.push(`ok ${update.ref}`);
+    }
+
+    let result = "";
+    for (const line of response) {
+      const pktLine = line + "\n";
+      const len = (pktLine.length + 4).toString(16).padStart(4, "0");
+      result += len + pktLine;
+    }
+    result += "0000";
+
+    return Buffer.from(result);
+  } catch (err) {
+    console.error("Receive pack error:", err);
+    const errMsg = `ng unpack error ${err}\n`;
+    const len = (errMsg.length + 4).toString(16).padStart(4, "0");
+    return Buffer.from(len + errMsg + "0000");
+  }
+}
+
+function parsePktLines(data: Buffer): string[] {
+  const lines: string[] = [];
+  let offset = 0;
+
+  while (offset < data.length) {
+    const lenHex = data.slice(offset, offset + 4).toString("utf-8");
+    const len = parseInt(lenHex, 16);
+
+    if (len === 0) {
+      offset += 4;
+      continue;
+    }
+
+    if (len < 4) break;
+
+    const lineData = data.slice(offset + 4, offset + len);
+    lines.push(lineData.toString("utf-8").trim());
+    offset += len;
+  }
+
+  return lines;
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
@@ -136,9 +296,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const serviceQuery = request.nextUrl.searchParams.get("service");
 
     if (serviceQuery === "git-upload-pack" || serviceQuery === "git-receive-pack") {
-      const serviceName = serviceQuery;
-
-      if (serviceName === "git-receive-pack") {
+      if (serviceQuery === "git-receive-pack") {
         const user = await authenticateUser(request.headers.get("authorization"));
         if (!user || user.id !== repo.ownerId) {
           return new NextResponse("Unauthorized", {
@@ -148,35 +306,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
       }
 
-      const response = await withTempRepo(owner.id, repoName, async (tempDir) => {
-        const { stdout } = await runGitCommand("git", [serviceName.replace("git-", ""), "--advertise-refs", "."], tempDir);
+      const repoPrefix = getRepoPrefix(owner.id, repoName);
+      const fs = createR2Fs(repoPrefix);
 
-        const packet = `# service=${serviceName}\n`;
-        const packetLen = (packet.length + 4).toString(16).padStart(4, "0");
-        return Buffer.concat([Buffer.from(packetLen + packet + "0000"), stdout]);
-      });
+      const refs = await getRefsAdvertisement(fs, "/", serviceQuery);
+
+      const packet = `# service=${serviceQuery}\n`;
+      const packetLen = (packet.length + 4).toString(16).padStart(4, "0");
+      const response = Buffer.concat([Buffer.from(packetLen + packet + "0000"), refs]);
 
       return new NextResponse(new Uint8Array(response), {
         headers: {
-          "Content-Type": `application/x-${serviceName}-advertisement`,
+          "Content-Type": `application/x-${serviceQuery}-advertisement`,
           "Cache-Control": "no-cache",
         },
       });
     }
-
-    const infoRefs = await withTempRepo(owner.id, repoName, async (tempDir) => {
-      await runGitCommand("git", ["update-server-info"], tempDir);
-
-      try {
-        return await fs.readFile(path.join(tempDir, "info", "refs"), "utf-8");
-      } catch {
-        return "";
-      }
-    });
-
-    return new NextResponse(infoRefs, {
-      headers: { "Content-Type": "text/plain" },
-    });
   }
 
   return new NextResponse("Not found", { status: 404 });
@@ -230,26 +375,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
 
-  const body = await request.arrayBuffer();
-  const input = Buffer.from(body);
+  const body = Buffer.from(await request.arrayBuffer());
+  const repoPrefix = getRepoPrefix(owner.id, repoName);
+  const fs = createR2Fs(repoPrefix);
 
-  const serviceName = action.replace("git-", "");
-  const shouldSyncBack = action === "git-receive-pack";
+  let response: Buffer;
 
-  const { stdout, stderr, code } = await withTempRepo(
-    owner.id,
-    repoName,
-    async (tempDir) => {
-      return await runGitCommand("git", [serviceName, "--stateless-rpc", "."], tempDir, input);
-    },
-    shouldSyncBack
-  );
-
-  if (code !== 0) {
-    console.error("Git error:", stderr.toString());
+  if (action === "git-upload-pack") {
+    response = await handleUploadPack(fs, "/", body);
+  } else {
+    response = await handleReceivePack(fs, "/", body);
   }
 
-  return new NextResponse(new Uint8Array(stdout), {
+  return new NextResponse(new Uint8Array(response), {
     headers: {
       "Content-Type": `application/x-${action}-result`,
       "Cache-Control": "no-cache",
