@@ -346,8 +346,7 @@ export async function getRepositoryWithStars(owner: string, name: string) {
   const repo = await getRepository(owner, name);
   if (!repo) return null;
 
-  const starCount = await getStarCount(repo.id);
-  const starred = await isStarredByUser(repo.id);
+  const [starCount, starred] = await Promise.all([getStarCount(repo.id), isStarredByUser(repo.id)]);
 
   return { ...repo, starCount, starred };
 }
@@ -365,10 +364,7 @@ export async function getUserRepositoriesWithStars(username: string) {
   return reposWithStars;
 }
 
-export async function updateRepository(
-  repoId: string,
-  data: { name?: string; description?: string; visibility?: "public" | "private" }
-) {
+export async function updateRepository(repoId: string, data: { name?: string; description?: string; visibility?: "public" | "private" }) {
   const session = await getSession();
   if (!session?.user) {
     throw new Error("Unauthorized");
@@ -445,13 +441,7 @@ export async function getRepoBranches(owner: string, repoName: string) {
   }
 }
 
-export async function getRepoCommits(
-  owner: string,
-  repoName: string,
-  branch: string,
-  limit: number = 30,
-  skip: number = 0
-) {
+export async function getRepoCommits(owner: string, repoName: string, branch: string, limit: number = 30, skip: number = 0) {
   const user = await db.query.users.findFirst({
     where: eq(users.username, owner),
   });
@@ -515,11 +505,7 @@ export async function getRepoCommitCount(owner: string, repoName: string, branch
   }
 }
 
-export async function getPublicRepositories(
-  sortBy: "stars" | "updated" | "created" = "updated",
-  limit: number = 20,
-  offset: number = 0
-) {
+export async function getPublicRepositories(sortBy: "stars" | "updated" | "created" = "updated", limit: number = 20, offset: number = 0) {
   const allRepos = await db
     .select({
       id: repositories.id,
@@ -538,13 +524,7 @@ export async function getPublicRepositories(
     .from(repositories)
     .innerJoin(users, eq(repositories.ownerId, users.id))
     .where(eq(repositories.visibility, "public"))
-    .orderBy(
-      sortBy === "stars"
-        ? desc(sql`star_count`)
-        : sortBy === "created"
-        ? desc(repositories.createdAt)
-        : desc(repositories.updatedAt)
-    )
+    .orderBy(sortBy === "stars" ? desc(sql`star_count`) : sortBy === "created" ? desc(repositories.createdAt) : desc(repositories.updatedAt))
     .limit(limit + 1)
     .offset(offset);
 
@@ -569,5 +549,117 @@ export async function getPublicRepositories(
       },
     })),
     hasMore,
+  };
+}
+
+export type FileEntry = {
+  name: string;
+  type: "blob" | "tree";
+  oid: string;
+  path: string;
+  lastCommit: { message: string; timestamp: number } | null;
+};
+
+export async function getRepoPageData(owner: string, repoName: string) {
+  const [user, session] = await Promise.all([db.query.users.findFirst({ where: eq(users.username, owner) }), getSession()]);
+
+  if (!user) return null;
+
+  const repo = await db.query.repositories.findFirst({
+    where: and(eq(repositories.ownerId, user.id), eq(repositories.name, repoName)),
+  });
+
+  if (!repo) return null;
+
+  if (repo.visibility === "private" && (!session?.user || session.user.id !== repo.ownerId)) {
+    return null;
+  }
+
+  const [starCountResult, starredResult] = await Promise.all([
+    db.select({ count: count() }).from(stars).where(eq(stars.repositoryId, repo.id)),
+    session?.user ? db.query.stars.findFirst({ where: and(eq(stars.userId, session.user.id), eq(stars.repositoryId, repo.id)) }) : Promise.resolve(null),
+  ]);
+
+  const starCount = starCountResult[0]?.count ?? 0;
+  const starred = !!starredResult;
+  const isOwner = session?.user?.id === repo.ownerId;
+
+  const repoPrefix = getRepoPrefix(user.id, `${repoName}.git`);
+  const fs = createR2Fs(repoPrefix);
+
+  let files: FileEntry[] = [];
+  let isEmpty = true;
+  let readmeContent: string | null = null;
+  let branches: string[] = [];
+  let commitCount = 0;
+
+  try {
+    const [branchList, commits] = await Promise.all([git.listBranches({ fs, gitdir: "/" }), git.log({ fs, gitdir: "/", ref: repo.defaultBranch })]);
+
+    branches = branchList;
+    commitCount = commits.length;
+
+    if (commits.length > 0) {
+      isEmpty = false;
+      const commitOid = commits[0].oid;
+
+      const { tree } = await git.readTree({ fs, gitdir: "/", oid: commitOid });
+
+      const fileEntries = await Promise.all(
+        tree.map(async (entry) => {
+          let lastCommit: { message: string; timestamp: number } | null = null;
+          try {
+            const fileCommits = await git.log({ fs, gitdir: "/", ref: repo.defaultBranch, filepath: entry.path, depth: 1 });
+            if (fileCommits.length > 0) {
+              lastCommit = {
+                message: fileCommits[0].commit.message.split("\n")[0],
+                timestamp: fileCommits[0].commit.committer.timestamp * 1000,
+              };
+            }
+          } catch {}
+          return {
+            name: entry.path,
+            type: entry.type as "blob" | "tree",
+            oid: entry.oid,
+            path: entry.path,
+            lastCommit,
+          };
+        })
+      );
+
+      fileEntries.sort((a, b) => {
+        if (a.type === "tree" && b.type !== "tree") return -1;
+        if (a.type !== "tree" && b.type === "tree") return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      files = fileEntries;
+
+      const readmeEntry = tree.find((e) => e.path.toLowerCase() === "readme.md" && e.type === "blob");
+      if (readmeEntry) {
+        const { blob } = await git.readBlob({ fs, gitdir: "/", oid: readmeEntry.oid });
+        readmeContent = new TextDecoder("utf-8").decode(blob);
+      }
+    }
+  } catch (err: unknown) {
+    const error = err as { code?: string };
+    if (error.code !== "NotFoundError") {
+      console.error("getRepoPageData error:", err);
+    }
+  }
+
+  return {
+    repo: {
+      ...repo,
+      owner: { id: user.id, username: user.username, name: user.name, image: user.image },
+      starCount,
+      starred,
+    },
+    files,
+    isEmpty,
+    readmeContent,
+    branches,
+    commitCount,
+    isOwner,
   };
 }

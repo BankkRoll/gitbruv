@@ -1,4 +1,6 @@
-import { r2Get, r2Put, r2Delete, r2Exists, r2List, r2DeletePrefix } from "./r2";
+import { r2Get, r2Put, r2Delete, r2List, r2DeletePrefix } from "./r2";
+
+const NOT_FOUND = Symbol("NOT_FOUND");
 
 function normalizePath(path: string): string {
   return path.replace(/\/+/g, "/").replace(/^\//, "").replace(/\/$/, "");
@@ -24,6 +26,8 @@ function createStatResult(type: "file" | "dir", size: number) {
 
 export function createR2Fs(repoPrefix: string) {
   const dirMarkerCache = new Set<string>();
+  const fileCache = new Map<string, Buffer | typeof NOT_FOUND>();
+  const listCache = new Map<string, string[]>();
 
   const getKey = (filepath: string) => {
     const normalized = normalizePath(filepath);
@@ -36,9 +40,28 @@ export function createR2Fs(repoPrefix: string) {
     return `${repoPrefix}/${normalized}`.replace(/\/+/g, "/");
   };
 
+  const cachedR2Get = async (key: string): Promise<Buffer | null> => {
+    if (fileCache.has(key)) {
+      const cached = fileCache.get(key);
+      return cached === NOT_FOUND ? null : cached!;
+    }
+    const data = await r2Get(key);
+    fileCache.set(key, data ?? NOT_FOUND);
+    return data;
+  };
+
+  const cachedR2List = async (prefix: string): Promise<string[]> => {
+    if (listCache.has(prefix)) {
+      return listCache.get(prefix)!;
+    }
+    const keys = await r2List(prefix);
+    listCache.set(prefix, keys);
+    return keys;
+  };
+
   const readFile = async (filepath: string, options?: { encoding?: string }): Promise<Buffer | string> => {
     const key = getKey(filepath);
-    const data = await r2Get(key);
+    const data = await cachedR2Get(key);
     if (!data) {
       const err = new Error(`ENOENT: no such file or directory, open '${filepath}'`) as NodeJS.ErrnoException;
       err.code = "ENOENT";
@@ -52,19 +75,21 @@ export function createR2Fs(repoPrefix: string) {
 
   const writeFile = async (filepath: string, data: Buffer | string): Promise<void> => {
     const key = getKey(filepath);
-    console.log("[R2FS] writeFile:", key, "size:", typeof data === "string" ? data.length : data.length);
-    await r2Put(key, typeof data === "string" ? Buffer.from(data) : data);
+    const buffer = typeof data === "string" ? Buffer.from(data) : data;
+    await r2Put(key, buffer);
+    fileCache.set(key, buffer);
   };
 
   const unlink = async (filepath: string): Promise<void> => {
     const key = getKey(filepath);
     await r2Delete(key);
+    fileCache.set(key, NOT_FOUND);
   };
 
   const readdir = async (filepath: string): Promise<string[]> => {
     const prefix = getKey(filepath);
     const fullPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
-    const keys = await r2List(fullPrefix);
+    const keys = await cachedR2List(fullPrefix);
 
     const entries = new Set<string>();
     for (const key of keys) {
@@ -98,14 +123,13 @@ export function createR2Fs(repoPrefix: string) {
       return createStatResult("dir", 0);
     }
 
-    const exists = await r2Exists(key);
-    if (exists) {
-      const data = await r2Get(key);
-      return createStatResult("file", data?.length || 0);
+    const data = await cachedR2Get(key);
+    if (data) {
+      return createStatResult("file", data.length);
     }
 
     const prefix = key.endsWith("/") ? key : `${key}/`;
-    const children = await r2List(prefix);
+    const children = await cachedR2List(prefix);
     if (children.length > 0) {
       return createStatResult("dir", 0);
     }

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRepositoryWithStars, getRepoFileTree, getRepoFile, getRepoBranches, getRepoCommitCount } from "@/actions/repositories";
-import { getSession } from "@/lib/session";
+import { getRepoPageData } from "@/actions/repositories";
 import { FileTree } from "@/components/file-tree";
 import { CodeViewer } from "@/components/code-viewer";
 import { CloneUrl } from "@/components/clone-url";
@@ -15,27 +14,13 @@ import { getPublicServerUrl } from "@/lib/utils";
 export default async function RepoPage({ params }: { params: Promise<{ username: string; repo: string }> }) {
   const { username, repo: repoName } = await params;
 
-  const repo = await getRepositoryWithStars(username, repoName);
+  const data = await getRepoPageData(username, repoName);
 
-  if (!repo) {
+  if (!data) {
     notFound();
   }
 
-  const session = await getSession();
-  const isOwner = session?.user?.id === repo.ownerId;
-
-  const [fileTree, branches, commitCount] = await Promise.all([
-    getRepoFileTree(username, repoName, repo.defaultBranch),
-    getRepoBranches(username, repoName),
-    getRepoCommitCount(username, repoName, repo.defaultBranch),
-  ]);
-  const readmeFile = fileTree?.files.find((f) => f.name.toLowerCase() === "readme.md" && f.type === "blob");
-
-  let readmeContent = null;
-  if (readmeFile) {
-    const file = await getRepoFile(username, repoName, repo.defaultBranch, readmeFile.name);
-    readmeContent = file?.content;
-  }
+  const { repo, files, isEmpty, readmeContent, branches, commitCount, isOwner } = data;
 
   return (
     <div className="container px-4 py-6">
@@ -81,12 +66,7 @@ export default async function RepoPage({ params }: { params: Promise<{ username:
         <div className="lg:col-span-3 space-y-6">
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="flex items-center justify-between gap-4 px-4 py-3 bg-card border-b border-border">
-              <BranchSelector
-                branches={branches}
-                currentBranch={repo.defaultBranch}
-                username={username}
-                repoName={repo.name}
-              />
+              <BranchSelector branches={branches} currentBranch={repo.defaultBranch} username={username} repoName={repo.name} />
               {commitCount > 0 && (
                 <Link
                   href={`/${username}/${repo.name}/commits/${repo.defaultBranch}`}
@@ -99,10 +79,10 @@ export default async function RepoPage({ params }: { params: Promise<{ username:
               )}
             </div>
 
-            {fileTree?.isEmpty ? (
+            {isEmpty ? (
               <EmptyRepoGuide username={username} repoName={repo.name} />
             ) : (
-              <FileTree files={fileTree?.files || []} username={username} repoName={repo.name} branch={repo.defaultBranch} />
+              <FileTree files={files} username={username} repoName={repo.name} branch={repo.defaultBranch} />
             )}
           </div>
 
