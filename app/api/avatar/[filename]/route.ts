@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { r2Get } from "@/lib/r2";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ filename: string }> }) {
+  const rateLimitResult = rateLimit(request, "avatar", { limit: 200, windowMs: 60000 });
+  if (!rateLimitResult.success) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000).toString() },
+    });
+  }
+
   const { filename } = await params;
 
   const key = `avatars/${filename}`;

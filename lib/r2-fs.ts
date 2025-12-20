@@ -178,3 +178,5 @@ export function createR2Fs(repoPrefix: string) {
 export function getRepoPrefix(userId: string, repoName: string): string {
   return `repos/${userId}/${repoName}`;
 }
+
+export type R2Fs = ReturnType<typeof createR2Fs>;

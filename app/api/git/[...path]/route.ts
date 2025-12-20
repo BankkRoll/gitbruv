@@ -3,34 +3,11 @@ import { db } from "@/db";
 import { users, repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import git from "isomorphic-git";
-import { createR2Fs, getRepoPrefix } from "@/lib/r2-fs";
+import { createR2Fs, getRepoPrefix, R2Fs } from "@/lib/r2-fs";
 import { revalidateTag } from "next/cache";
-import { auth } from "@/lib/auth";
-
-async function authenticateUser(authHeader: string | null): Promise<{ id: string; username: string } | null> {
-  if (!authHeader?.startsWith("Basic ")) return null;
-
-  const credentials = Buffer.from(authHeader.split(" ")[1], "base64").toString("utf-8");
-  const [email, password] = credentials.split(":");
-  if (!email || !password) return null;
-
-  try {
-    const result = await auth.api.signInEmail({
-      body: { email, password },
-      asResponse: false,
-    });
-
-    if (!result?.user) return null;
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
-
-    return user ? { id: user.id, username: user.username } : null;
-  } catch {
-    return null;
-  }
-}
+import { rateLimit } from "@/lib/rate-limit";
+import { authenticateRequest } from "@/lib/api-auth";
+import { createHash } from "crypto";
 
 function parseGitPath(pathSegments: string[]): { username: string; repoName: string; action: string | null } | null {
   if (pathSegments.length < 2) return null;
@@ -56,7 +33,7 @@ function parseGitPath(pathSegments: string[]): { username: string; repoName: str
   return { username, repoName, action };
 }
 
-async function getRefsAdvertisement(fs: any, gitdir: string, service: string): Promise<Buffer> {
+async function getRefsAdvertisement(fs: R2Fs, gitdir: string, service: string): Promise<Buffer> {
   const capabilities =
     service === "git-upload-pack"
       ? [
@@ -124,16 +101,13 @@ async function getRefsAdvertisement(fs: any, gitdir: string, service: string): P
   return Buffer.concat(packets);
 }
 
-async function handleUploadPack(fs: any, gitdir: string, body: Buffer): Promise<Buffer> {
+async function handleUploadPack(fs: R2Fs, gitdir: string, body: Buffer): Promise<Buffer> {
   const lines = parsePktLines(body);
   const wants: string[] = [];
-  const haves: string[] = [];
 
   for (const line of lines) {
     if (line.startsWith("want ")) {
       wants.push(line.slice(5, 45));
-    } else if (line.startsWith("have ")) {
-      haves.push(line.slice(5, 45));
     }
   }
 
@@ -159,23 +133,17 @@ async function handleUploadPack(fs: any, gitdir: string, body: Buffer): Promise<
   }
 }
 
-async function handleReceivePack(fs: any, gitdir: string, body: Buffer): Promise<Buffer> {
-  console.log("[ReceivePack] Starting, body length:", body.length);
-
+async function handleReceivePack(fs: R2Fs, gitdir: string, body: Buffer): Promise<Buffer> {
   const packStart = body.indexOf(Buffer.from("PACK"));
-  console.log("[ReceivePack] PACK header at:", packStart);
 
   if (packStart === -1) {
-    console.log("[ReceivePack] No PACK header found");
     return Buffer.from("000eunpack ok\n0000");
   }
 
   const commandSection = body.slice(0, packStart);
   const packData = body.slice(packStart);
-  console.log("[ReceivePack] Command section length:", commandSection.length, "Pack data length:", packData.length);
 
   const lines = parsePktLines(commandSection);
-  console.log("[ReceivePack] Parsed lines:", lines);
 
   const updates: { oldOid: string; newOid: string; ref: string }[] = [];
 
@@ -185,35 +153,27 @@ async function handleReceivePack(fs: any, gitdir: string, body: Buffer): Promise
       updates.push({ oldOid: match[1], newOid: match[2], ref: match[3].replace("\0", "").split(" ")[0] });
     }
   }
-  console.log("[ReceivePack] Updates:", updates);
 
   try {
-    console.log("[ReceivePack] Creating directories...");
-    await fs.promises.mkdir("/objects", { recursive: true }).catch(() => {});
-    await fs.promises.mkdir("/objects/pack", { recursive: true }).catch(() => {});
+    await fs.promises.mkdir("/objects").catch(() => {});
+    await fs.promises.mkdir("/objects/pack").catch(() => {});
 
-    const packHash = require("crypto").createHash("sha1").update(packData).digest("hex");
+    const packHash = createHash("sha1").update(packData).digest("hex");
     const packFileName = `pack-${packHash}`;
     const packPath = `/objects/pack/${packFileName}.pack`;
-    const idxPath = `/objects/pack/${packFileName}.idx`;
 
-    console.log("[ReceivePack] Writing pack file:", packPath);
     await fs.promises.writeFile(packPath, packData);
 
-    console.log("[ReceivePack] Calling indexPack...");
-    const result = await git.indexPack({ fs, dir: "/", gitdir: "/", filepath: `objects/pack/${packFileName}.pack` });
-    console.log("[ReceivePack] indexPack result, oids:", result.oids?.length);
+    await git.indexPack({ fs, dir: "/", gitdir: "/", filepath: `objects/pack/${packFileName}.pack` });
 
-    console.log("[ReceivePack] Writing refs...");
     for (const update of updates) {
       const refPath = update.ref.startsWith("refs/") ? update.ref : `refs/heads/${update.ref}`;
-      console.log("[ReceivePack] Writing ref:", refPath, "->", update.newOid);
 
       if (update.newOid === "0".repeat(40)) {
         await fs.promises.unlink(`/${refPath}`).catch(() => {});
       } else {
         const refDir = "/" + refPath.split("/").slice(0, -1).join("/");
-        await fs.promises.mkdir(refDir, { recursive: true }).catch(() => {});
+        await fs.promises.mkdir(refDir).catch(() => {});
         await fs.promises.writeFile(`/${refPath}`, update.newOid + "\n");
       }
     }
@@ -231,7 +191,6 @@ async function handleReceivePack(fs: any, gitdir: string, body: Buffer): Promise
     }
     responseStr += "0000";
 
-    console.log("[ReceivePack] Success!");
     return Buffer.from(responseStr);
   } catch (err) {
     console.error("[ReceivePack] Error:", err);
@@ -265,6 +224,14 @@ function parsePktLines(data: Buffer): string[] {
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const rateLimitResult = rateLimit(request, "git", { limit: 100, windowMs: 60000 });
+  if (!rateLimitResult.success) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000).toString() },
+    });
+  }
+
   const { path: pathSegments } = await params;
   const parsed = parseGitPath(pathSegments);
 
@@ -291,7 +258,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   if (repo.visibility === "private") {
-    const user = await authenticateUser(request.headers.get("authorization"));
+    const user = await authenticateRequest(request);
     if (!user || user.id !== repo.ownerId) {
       return new NextResponse("Unauthorized", {
         status: 401,
@@ -305,7 +272,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (serviceQuery === "git-upload-pack" || serviceQuery === "git-receive-pack") {
       if (serviceQuery === "git-receive-pack") {
-        const user = await authenticateUser(request.headers.get("authorization"));
+        const user = await authenticateRequest(request);
         if (!user || user.id !== repo.ownerId) {
           return new NextResponse("Unauthorized", {
             status: 401,
@@ -336,6 +303,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const rateLimitResult = rateLimit(request, "git", { limit: 30, windowMs: 60000 });
+  if (!rateLimitResult.success) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000).toString() },
+    });
+  }
+
   const { path: pathSegments } = await params;
   const parsed = parseGitPath(pathSegments);
 
@@ -365,7 +340,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return new NextResponse("Repository not found", { status: 404 });
   }
 
-  const user = await authenticateUser(request.headers.get("authorization"));
+  const user = await authenticateRequest(request);
 
   if (action === "git-receive-pack") {
     if (!user || user.id !== repo.ownerId) {

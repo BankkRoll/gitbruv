@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import git from "isomorphic-git";
 import { createR2Fs, getRepoPrefix } from "@/lib/r2-fs";
+import { rateLimit } from "@/lib/rate-limit";
+import { authenticateRequest } from "@/lib/api-auth";
 
 const CHUNK_SIZE = 64 * 1024;
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const rateLimitResult = rateLimit(request, "file", { limit: 120, windowMs: 60000 });
+  if (!rateLimitResult.success) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000).toString() },
+    });
+  }
+
   const { path } = await params;
 
   if (path.length < 4) {
@@ -35,9 +44,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   if (repo.visibility === "private") {
-    const session = await getSession();
-    if (!session?.user || session.user.id !== repo.ownerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    const authenticatedUser = await authenticateRequest(request);
+    if (!authenticatedUser || authenticatedUser.id !== repo.ownerId) {
+      return new NextResponse("Unauthorized", {
+        status: 401,
+        headers: { "WWW-Authenticate": 'Basic realm="gitbruv"' },
+      });
     }
   }
 
@@ -132,4 +144,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
