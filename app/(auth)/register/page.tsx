@@ -89,9 +89,7 @@ export default function RegisterPage() {
               required
               className="bg-input/50 h-11"
             />
-            <p className="text-xs text-muted-foreground">
-              This will be your unique identifier on gitbruv
-            </p>
+            <p className="text-xs text-muted-foreground">This will be your unique identifier on gitbruv</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
@@ -117,15 +115,9 @@ export default function RegisterPage() {
               minLength={8}
               className="bg-input/50 h-11"
             />
-            <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters
-            </p>
+            <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-11"
-          >
+          <Button type="submit" disabled={loading} className="w-full h-11">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -140,10 +132,7 @@ export default function RegisterPage() {
       <div className="mt-6 p-4 rounded-xl border border-border text-center">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-accent hover:underline font-medium"
-          >
+          <Link href="/login" className="text-accent hover:underline font-medium">
             Sign in
           </Link>
         </p>

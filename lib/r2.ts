@@ -95,4 +95,3 @@ export async function r2DeletePrefix(prefix: string): Promise<void> {
     await r2Delete(key);
   }
 }
-

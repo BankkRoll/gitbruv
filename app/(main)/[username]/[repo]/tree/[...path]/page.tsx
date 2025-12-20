@@ -5,7 +5,7 @@ import { getRepository, getRepoFileTree, getRepoBranches } from "@/actions/repos
 import { FileTree } from "@/components/file-tree";
 import { BranchSelector } from "@/components/branch-selector";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Globe, ChevronRight, Home, Loader2 } from "lucide-react";
+import { Lock, Globe, ChevronRight, Home } from "lucide-react";
 
 async function TreeContent({ username, repoName, branch, dirPath }: { username: string; repoName: string; branch: string; dirPath: string }) {
   const fileTree = await getRepoFileTree(username, repoName, branch, dirPath);

@@ -4,7 +4,6 @@ import { ProfileForm } from "@/components/settings/profile-form";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { SocialLinksForm } from "@/components/settings/social-links-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -18,9 +17,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Profile Picture</CardTitle>
-          <CardDescription>
-            Upload a picture to personalize your profile
-          </CardDescription>
+          <CardDescription>Upload a picture to personalize your profile</CardDescription>
         </CardHeader>
         <CardContent>
           <AvatarUpload currentAvatar={user.avatarUrl} name={user.name} />
@@ -30,9 +27,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
-          <CardDescription>
-            Update your profile details visible to other users
-          </CardDescription>
+          <CardDescription>Update your profile details visible to other users</CardDescription>
         </CardHeader>
         <CardContent>
           <ProfileForm
@@ -51,9 +46,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Social Links</CardTitle>
-          <CardDescription>
-            Add links to your social profiles
-          </CardDescription>
+          <CardDescription>Add links to your social profiles</CardDescription>
         </CardHeader>
         <CardContent>
           <SocialLinksForm socialLinks={user.socialLinks} />
@@ -62,4 +55,3 @@ export default async function SettingsPage() {
     </div>
   );
 }
-

@@ -28,12 +28,9 @@ export default async function HomePage() {
               <p className="text-sm text-muted-foreground truncate">@{username}</p>
             </div>
           </div>
-          
+
           <nav className="mt-4 space-y-1">
-            <Link 
-              href={`/${username}`}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm hover:bg-card transition-colors"
-            >
+            <Link href={`/${username}`} className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm hover:bg-card transition-colors">
               <BookOpen className="h-4 w-4 text-muted-foreground" />
               Your repositories
             </Link>
@@ -57,9 +54,7 @@ export default async function HomePage() {
                 <GitBranch className="h-8 w-8 text-accent" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No repositories yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                Create your first repository to start building something awesome
-              </p>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">Create your first repository to start building something awesome</p>
               <Button asChild size="lg">
                 <Link href="/new">
                   <Plus className="h-4 w-4 mr-2" />
@@ -93,19 +88,14 @@ function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight mb-6">
             Where the world
             <br />
-            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              builds software
-            </span>
+            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">builds software</span>
           </h1>
           <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Host and review code, manage projects, and build software alongside
-            millions of developers. Your code, your way.
+            Host and review code, manage projects, and build software alongside millions of developers. Your code, your way.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild className="text-base h-12 px-8">
-              <Link href="/register">
-                Get started for free
-              </Link>
+              <Link href="/register">Get started for free</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="text-base h-12 px-8">
               <Link href="/login">Sign in</Link>
@@ -118,9 +108,7 @@ function LandingPage() {
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Everything you need to ship</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Powerful features to help you build, test, and deploy your projects faster
-            </p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">Powerful features to help you build, test, and deploy your projects faster</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             <FeatureCard
@@ -128,16 +116,8 @@ function LandingPage() {
               title="Collaborative coding"
               description="Build better software together with powerful code review and collaboration tools."
             />
-            <FeatureCard
-              icon={Rocket}
-              title="Ship faster"
-              description="Automate your workflow with CI/CD pipelines and deploy with confidence."
-            />
-            <FeatureCard
-              icon={Users}
-              title="Open source"
-              description="Join the world's largest developer community and contribute to projects."
-            />
+            <FeatureCard icon={Rocket} title="Ship faster" description="Automate your workflow with CI/CD pipelines and deploy with confidence." />
+            <FeatureCard icon={Users} title="Open source" description="Join the world's largest developer community and contribute to projects." />
           </div>
         </div>
       </section>
@@ -145,15 +125,7 @@ function LandingPage() {
   );
 }
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
+function FeatureCard({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
   return (
     <div className="group p-6 rounded-xl border border-border bg-card hover:border-accent/50 transition-all duration-300">
       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">

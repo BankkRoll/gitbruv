@@ -6,10 +6,22 @@ import { BranchSelector } from "@/components/branch-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Lock, Globe, GitCommit, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Lock, Globe, GitCommit, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-async function CommitsList({ username, repoName, branch, page, perPage }: { username: string; repoName: string; branch: string; page: number; perPage: number }) {
+async function CommitsList({
+  username,
+  repoName,
+  branch,
+  page,
+  perPage,
+}: {
+  username: string;
+  repoName: string;
+  branch: string;
+  page: number;
+  perPage: number;
+}) {
   const skip = (page - 1) * perPage;
   const { commits, hasMore } = await getRepoCommits(username, repoName, branch, perPage, skip);
 

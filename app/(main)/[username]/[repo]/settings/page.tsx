@@ -22,11 +22,7 @@ type RepoData = {
   ownerId: string;
 };
 
-export default function RepoSettingsPage({
-  params,
-}: {
-  params: Promise<{ username: string; repo: string }>;
-}) {
+export default function RepoSettingsPage({ params }: { params: Promise<{ username: string; repo: string }> }) {
   const { username, repo: repoName } = use(params);
   const router = useRouter();
   const { data: session } = useSession();
@@ -117,9 +113,7 @@ export default function RepoSettingsPage({
           <CardContent className="p-12 text-center">
             <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-6">
-              You don&apos;t have permission to access this page
-            </p>
+            <p className="text-muted-foreground mb-6">You don&apos;t have permission to access this page</p>
             <Button asChild>
               <Link href={`/${username}/${repoName}`}>Back to repository</Link>
             </Button>
@@ -175,9 +169,7 @@ export default function RepoSettingsPage({
               <div className="space-y-2">
                 <label
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    formData.visibility === "public"
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-muted-foreground/50"
+                    formData.visibility === "public" ? "border-accent bg-accent/5" : "border-border hover:border-muted-foreground/50"
                   }`}
                 >
                   <input
@@ -191,17 +183,13 @@ export default function RepoSettingsPage({
                   <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="font-medium">Public</p>
-                    <p className="text-sm text-muted-foreground">
-                      Anyone can see this repository
-                    </p>
+                    <p className="text-sm text-muted-foreground">Anyone can see this repository</p>
                   </div>
                 </label>
 
                 <label
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    formData.visibility === "private"
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-muted-foreground/50"
+                    formData.visibility === "private" ? "border-accent bg-accent/5" : "border-border hover:border-muted-foreground/50"
                   }`}
                 >
                   <input
@@ -215,9 +203,7 @@ export default function RepoSettingsPage({
                   <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="font-medium">Private</p>
-                    <p className="text-sm text-muted-foreground">
-                      Only you can see this repository
-                    </p>
+                    <p className="text-sm text-muted-foreground">Only you can see this repository</p>
                   </div>
                 </label>
               </div>
@@ -236,17 +222,13 @@ export default function RepoSettingsPage({
       <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            Irreversible actions that can affect your repository
-          </CardDescription>
+          <CardDescription>Irreversible actions that can affect your repository</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
             <div>
               <p className="font-medium">Delete this repository</p>
-              <p className="text-sm text-muted-foreground">
-                Once deleted, it cannot be recovered
-              </p>
+              <p className="text-sm text-muted-foreground">Once deleted, it cannot be recovered</p>
             </div>
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
               <DialogTrigger asChild>
@@ -260,33 +242,23 @@ export default function RepoSettingsPage({
                   <DialogTitle>Delete repository</DialogTitle>
                   <DialogDescription>
                     This action cannot be undone. This will permanently delete the{" "}
-                    <strong>{username}/{repo.name}</strong> repository and all of its contents.
+                    <strong>
+                      {username}/{repo.name}
+                    </strong>{" "}
+                    repository and all of its contents.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2 py-4">
                   <Label htmlFor="confirm">
                     Type <strong>{repo.name}</strong> to confirm
                   </Label>
-                  <Input
-                    id="confirm"
-                    value={deleteConfirm}
-                    onChange={(e) => setDeleteConfirm(e.target.value)}
-                    placeholder={repo.name}
-                  />
+                  <Input id="confirm" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder={repo.name} />
                 </div>
                 <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDeleteOpen(false)}
-                    disabled={deleting}
-                  >
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
                     Cancel
                   </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={deleteConfirm !== repo.name || deleting}
-                  >
+                  <Button variant="destructive" onClick={handleDelete} disabled={deleteConfirm !== repo.name || deleting}>
                     {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Delete repository
                   </Button>
@@ -299,4 +271,3 @@ export default function RepoSettingsPage({
     </div>
   );
 }
-

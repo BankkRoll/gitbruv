@@ -7,7 +7,7 @@ import { getUserRepositoriesWithStars, getUserStarredRepos } from "@/actions/rep
 import { RepoList } from "@/components/repo-list";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, GitBranch, MapPin, Link as LinkIcon, Loader2, Star, BookOpen } from "lucide-react";
+import { CalendarDays, GitBranch, MapPin, Link as LinkIcon, Star, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { GithubIcon, XIcon, LinkedInIcon } from "@/components/icons";
@@ -61,13 +61,7 @@ function TabSkeleton() {
   );
 }
 
-export default async function ProfilePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function ProfilePage({ params, searchParams }: { params: Promise<{ username: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { username } = await params;
   const { tab } = await searchParams;
 
