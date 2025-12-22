@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Lock, Globe, GitCommit, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+export const revalidate = 60;
+
 async function CommitsList({
   username,
   repoName,

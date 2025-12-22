@@ -9,6 +9,8 @@ import { BranchSelector } from "@/components/branch-selector";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Globe, ChevronRight, Home, FileCode, Loader2 } from "lucide-react";
 
+export const revalidate = 3600;
+
 const LANGUAGE_MAP: Record<string, string> = {
   ts: "typescript",
   tsx: "typescript",

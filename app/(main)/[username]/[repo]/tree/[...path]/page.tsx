@@ -7,6 +7,8 @@ import { BranchSelector } from "@/components/branch-selector";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Globe, ChevronRight, Home } from "lucide-react";
 
+export const revalidate = 60;
+
 async function TreeContent({ username, repoName, branch, dirPath }: { username: string; repoName: string; branch: string; dirPath: string }) {
   const fileTree = await getRepoFileTree(username, repoName, branch, dirPath);
 

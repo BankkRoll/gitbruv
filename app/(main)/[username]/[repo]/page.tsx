@@ -13,6 +13,8 @@ import { Lock, Globe, FileCode, Settings, GitCommit, GitBranch, Loader2 } from "
 import Link from "next/link";
 import { getPublicServerUrl } from "@/lib/utils";
 
+export const revalidate = 60;
+
 async function CommitCount({ username, repoName, branch }: { username: string; repoName: string; branch: string }) {
   await connection();
   const commitCount = await getRepoCommitCountCached(username, repoName);
