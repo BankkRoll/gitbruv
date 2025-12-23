@@ -1,5 +1,6 @@
-import { type AuthenticatedUser, type Credentials, verifyCredentials, getRepoWithOwner } from "@gitbruv/auth";
-import { type Database, repositories } from "@gitbruv/db";
+import { type AuthenticatedUser, type Credentials, verifyCredentials, getRepoWithOwner, getUserById } from "@gitbruv/auth";
+import { type Database, repositories, sessions } from "@gitbruv/db";
+import { eq, gt } from "drizzle-orm";
 
 export type { AuthenticatedUser };
 
@@ -20,6 +21,23 @@ export function parseBasicAuth(request: Request): Credentials | null {
 }
 
 export async function authenticateRequest(request: Request, db: Database): Promise<AuthenticatedUser | null> {
+  const authHeader = request.headers.get("authorization");
+  
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.token, token),
+    });
+    
+    if (session && session.expiresAt > new Date()) {
+      const user = await getUserById(db, session.userId);
+      if (user) {
+        return { id: user.id, username: user.username };
+      }
+    }
+    return null;
+  }
+  
   const creds = parseBasicAuth(request);
   if (!creds) {
     return null;
