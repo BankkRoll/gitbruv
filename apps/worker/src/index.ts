@@ -23,6 +23,8 @@ type AppEnv = { Bindings: Env; Variables: Variables };
 
 const app = new Hono<AppEnv>();
 
+app.get("/health", (c) => c.json({ status: "ok", timestamp: Date.now() }));
+
 const CHUNK_SIZE = 64 * 1024;
 
 const repoMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -246,7 +248,7 @@ app.get("/avatar/:filename", async (c) => {
   const obj = await c.env.REPO_BUCKET.get(key);
 
   if (!obj) {
-    return new Response(null, { status: 404 });
+    return c.text("Avatar not found", 404);
   }
 
   const ext = filename.split(".").pop()?.toLowerCase();
