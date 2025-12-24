@@ -15,7 +15,7 @@ COPY apps/api ./apps/api
 WORKDIR /app/apps/api
 RUN bun run build
 
-FROM node:22-alpine AS runner
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
