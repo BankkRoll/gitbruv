@@ -8,8 +8,19 @@ import { registerAvatarRoutes } from "./routes/avatar";
 import { registerR2Routes } from "./routes/r2";
 import { registerRepositoryRoutes } from "./routes/repositories";
 import { registerSettingsRoutes } from "./routes/settings";
+import { getEnv } from "./env";
+import { createS3Client } from "./r2-fs";
+import { createDb } from "./db";
 
 const app = new Hono<AppEnv>();
+
+app.use("*", async (c, next) => {
+  const env = getEnv();
+  const s3Client = createS3Client(env.R2_ENDPOINT, env.R2_ACCESS_KEY_ID, env.R2_SECRET_ACCESS_KEY);
+  c.set("s3", { client: s3Client, bucket: env.R2_BUCKET_NAME });
+  c.set("db", createDb(env.DATABASE_URL));
+  await next();
+});
 
 app.use(
   "/api/*",

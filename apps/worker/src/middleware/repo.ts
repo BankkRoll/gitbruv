@@ -1,6 +1,5 @@
 import { type MiddlewareHandler } from "hono";
 import { type AppEnv } from "../types";
-import { createDb } from "../db";
 import { getRepoPrefix } from "../r2-fs";
 import { getRepoOwnerAndRepo } from "../auth";
 
@@ -12,9 +11,7 @@ export const repoMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
     repoName = repoName.slice(0, -4);
   }
 
-  const db = createDb(c.env.DB.connectionString);
-  c.set("db", db);
-
+  const db = c.get("db");
   const result = await getRepoOwnerAndRepo(db, username, repoName);
   if (!result) {
     return c.text("Repository not found", 404);
@@ -25,4 +22,3 @@ export const repoMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   await next();
 };
-

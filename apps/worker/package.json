@@ -1,27 +1,30 @@
 {
-  "name": "@gitbruv/worker",
+  "name": "@gitbruv/api",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "wrangler dev --env-file ../../.env",
-    "build": "wrangler deploy --dry-run",
-    "deploy": "wrangler deploy",
-    "types": "wrangler types"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --target node22 --dts",
+    "start": "node dist/server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.712.0",
     "@gitbruv/auth": "workspace:*",
     "@gitbruv/db": "workspace:*",
+    "@hono/node-server": "^1.13.7",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.1",
     "isomorphic-git": "^1.36.1",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251224.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25",
-    "typescript": "^5",
-    "wrangler": "4"
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
   }
 }

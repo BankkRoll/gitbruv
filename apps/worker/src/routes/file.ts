@@ -28,7 +28,8 @@ export function registerFileRoutes(app: Hono<AppEnv>) {
       if (authError) return authError;
     }
 
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const commits = await git.log({
@@ -123,4 +124,3 @@ export function registerFileRoutes(app: Hono<AppEnv>) {
     }
   });
 }
-

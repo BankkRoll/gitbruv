@@ -1,26 +1,12 @@
 import { type Hono } from "hono";
 import { type AppEnv } from "../types";
 import { authMiddleware } from "../middleware/auth";
-import { createDb } from "../db";
 import { repositories, users, stars } from "@gitbruv/db";
 import { eq, and, desc, count, sql } from "drizzle-orm";
 import git from "isomorphic-git";
-import { createR2Fs, getRepoPrefix } from "../r2-fs";
-import { r2DeletePrefix } from "./r2-helpers";
+import { createR2Fs, getRepoPrefix, s3DeletePrefix } from "../r2-fs";
 
 export function registerRepositoryRoutes(app: Hono<AppEnv>) {
-  app.use("/api/repositories/*", async (c, next) => {
-    const db = createDb(c.env.DB.connectionString);
-    c.set("db", db);
-    await next();
-  });
-
-  app.use("/api/users/*", async (c, next) => {
-    const db = createDb(c.env.DB.connectionString);
-    c.set("db", db);
-    await next();
-  });
-
   app.post("/api/repositories", authMiddleware, async (c) => {
     const user = c.get("user");
     if (!user) {
@@ -55,7 +41,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
       .returning();
 
     const repoPrefix = getRepoPrefix(user.id, `${normalizedName}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     await fs.writeFile("/HEAD", "ref: refs/heads/main\n");
     await fs.writeFile(
@@ -171,8 +158,9 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${repo.name}.git`);
+    const s3 = c.get("s3");
     try {
-      await r2DeletePrefix(c.env.REPO_BUCKET, repoPrefix);
+      await s3DeletePrefix(s3, repoPrefix);
     } catch {}
 
     await db.delete(repositories).where(eq(repositories.id, repoId));
@@ -323,7 +311,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const branches = await git.listBranches({ fs, gitdir: "/" });
@@ -350,7 +339,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const commits = await git.log({
@@ -403,7 +393,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const commits = await git.log({
@@ -433,7 +424,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const commits = await git.log({
@@ -515,7 +507,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const commits = await git.log({
@@ -588,7 +581,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     let files: Array<{ name: string; type: "blob" | "tree"; oid: string; path: string }> = [];
     let isEmpty = true;
@@ -670,7 +664,8 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
     }
 
     const repoPrefix = getRepoPrefix(user.id, `${name}.git`);
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
 
     try {
       const { blob } = await git.readBlob({ fs, gitdir: "/", oid: readmeOid });
@@ -820,7 +815,7 @@ export function registerRepositoryRoutes(app: Hono<AppEnv>) {
   });
 
   app.get("/api/users/public", async (c) => {
-    const db = createDb(c.env.DB.connectionString);
+    const db = c.get("db");
     const sortBy = (c.req.query("sortBy") || "newest") as "newest" | "oldest";
     const limit = parseInt(c.req.query("limit") || "20", 10);
     const offset = parseInt(c.req.query("offset") || "0", 10);

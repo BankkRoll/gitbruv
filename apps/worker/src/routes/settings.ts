@@ -1,20 +1,13 @@
 import { type Hono } from "hono";
+import { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { type AppEnv } from "../types";
 import { authMiddleware } from "../middleware/auth";
-import { createDb } from "../db";
 import { users, repositories, accounts } from "@gitbruv/db";
 import { eq, and } from "drizzle-orm";
-import { r2DeletePrefix } from "./r2-helpers";
-import { getRepoPrefix } from "../r2-fs";
+import { getRepoPrefix, s3DeletePrefix } from "../r2-fs";
 import { verifyPassword, hashPassword } from "@gitbruv/auth";
 
 export function registerSettingsRoutes(app: Hono<AppEnv>) {
-  app.use("/api/settings/*", async (c, next) => {
-    const db = createDb(c.env.DB.connectionString);
-    c.set("db", db);
-    await next();
-  });
-
   app.patch("/api/settings/profile", authMiddleware, async (c) => {
     const user = c.get("user");
     if (!user) {
@@ -110,11 +103,16 @@ export function registerSettingsRoutes(app: Hono<AppEnv>) {
     const key = `avatars/${user.id}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
-    await c.env.REPO_BUCKET.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-    });
+    const s3 = c.get("s3");
+
+    await s3.client.send(
+      new PutObjectCommand({
+        Bucket: s3.bucket,
+        Key: key,
+        Body: new Uint8Array(arrayBuffer),
+        ContentType: file.type,
+      })
+    );
 
     const workerUrl = c.req.url.split("/api")[0];
     const avatarUrl = `${workerUrl}/avatar/${user.id}.${ext}`;
@@ -201,6 +199,7 @@ export function registerSettingsRoutes(app: Hono<AppEnv>) {
     }
 
     const db = c.get("db");
+    const s3 = c.get("s3");
 
     const userRepos = await db.query.repositories.findMany({
       where: eq(repositories.ownerId, user.id),
@@ -209,22 +208,30 @@ export function registerSettingsRoutes(app: Hono<AppEnv>) {
     for (const repo of userRepos) {
       try {
         const repoPrefix = getRepoPrefix(user.id, `${repo.name}.git`);
-        await r2DeletePrefix(c.env.REPO_BUCKET, repoPrefix);
+        await s3DeletePrefix(s3, repoPrefix);
       } catch {}
     }
 
     try {
       const avatarKeys: string[] = [];
-      let cursor: string | undefined;
+      let continuationToken: string | undefined;
       do {
-        const result = await c.env.REPO_BUCKET.list({ prefix: `avatars/${user.id}`, cursor });
-        for (const obj of result.objects) {
-          avatarKeys.push(obj.key);
+        const response = await s3.client.send(
+          new ListObjectsV2Command({
+            Bucket: s3.bucket,
+            Prefix: `avatars/${user.id}`,
+            ContinuationToken: continuationToken,
+          })
+        );
+        for (const obj of response.Contents || []) {
+          if (obj.Key) {
+            avatarKeys.push(obj.Key);
+          }
         }
-        cursor = result.truncated ? result.cursor : undefined;
-      } while (cursor);
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+      } while (continuationToken);
 
-      await Promise.all(avatarKeys.map((key) => c.env.REPO_BUCKET.delete(key)));
+      await Promise.all(avatarKeys.map((key) => s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }))));
     } catch {}
 
     await db.delete(users).where(eq(users.id, user.id));
@@ -250,4 +257,3 @@ export function registerSettingsRoutes(app: Hono<AppEnv>) {
     return c.json(userData);
   });
 }
-

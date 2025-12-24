@@ -1,4 +1,10 @@
-export * from "./types";
-export * from "./password";
-export * from "./queries";
-
+export type { AuthenticatedUser, Credentials, AuthResult } from "./types";
+export { hashPassword, verifyPassword } from "./password";
+export {
+  getUserByEmail,
+  getUserById,
+  getUserByUsername,
+  getCredentialAccount,
+  verifyCredentials,
+  getRepoWithOwner,
+} from "./queries";

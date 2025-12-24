@@ -22,7 +22,8 @@ export function registerGitRoutes(app: Hono<AppEnv>) {
       if (authError) return authError;
     }
 
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
     const refs = await getRefsAdvertisement(fs, "/", service);
 
     const packet = `# service=${service}\n`;
@@ -50,7 +51,8 @@ export function registerGitRoutes(app: Hono<AppEnv>) {
     }
 
     const body = new Uint8Array(await c.req.arrayBuffer());
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
     const response = await handleUploadPack(fs, "/", body);
 
     return new Response(response, {
@@ -68,7 +70,8 @@ export function registerGitRoutes(app: Hono<AppEnv>) {
     if (authError) return authError;
 
     const body = new Uint8Array(await c.req.arrayBuffer());
-    const fs = createR2Fs(c.env.REPO_BUCKET, repoPrefix);
+    const s3 = c.get("s3");
+    const fs = createR2Fs(s3, repoPrefix);
     const response = await handleReceivePack(fs, "/", body);
 
     return new Response(response, {

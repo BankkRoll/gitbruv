@@ -1,15 +1,9 @@
-import {
-  Outlet,
-  createRootRoute,
-  HeadContent,
-  Scripts,
-  Link,
-} from "@tanstack/react-router"
-import { Toaster } from "@/components/ui/sonner"
-import { Analytics } from "@vercel/analytics/react"
-import { Button } from "@/components/ui/button"
-import { GitBranch, Home } from "lucide-react"
-import appCss from "./globals.css?url"
+import { Outlet, createRootRoute, HeadContent, Scripts, Link } from "@tanstack/react-router";
+import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/react";
+import { Button } from "@/components/ui/button";
+import { GitBranch, Home } from "lucide-react";
+import appCss from "./globals.css?url";
 
 function NotFound() {
   return (
@@ -19,10 +13,7 @@ function NotFound() {
         <GitBranch className="h-16 w-16 mx-auto mb-6 text-muted-foreground" />
         <h1 className="text-7xl font-bold text-foreground mb-2">404</h1>
         <h2 className="text-2xl font-semibold mb-4">Page not found</h2>
-        <p className="text-muted-foreground mb-8 max-w-md">
-          The page you're looking for doesn't exist or you don't have permission
-          to view it.
-        </p>
+        <p className="text-muted-foreground mb-8 max-w-md">The page you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.</p>
         <Button asChild>
           <Link to="/" className="gap-2">
             <Home className="h-4 w-4" />
@@ -31,7 +22,7 @@ function NotFound() {
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 export const Route = createRootRoute({
@@ -58,7 +49,7 @@ export const Route = createRootRoute({
   }),
   component: RootLayout,
   notFoundComponent: NotFound,
-})
+});
 
 function RootLayout() {
   return (
@@ -73,6 +64,5 @@ function RootLayout() {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }
-

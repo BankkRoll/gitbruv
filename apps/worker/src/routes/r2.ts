@@ -1,62 +1,79 @@
 import { type Hono } from "hono";
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  HeadObjectCommand,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import { type AppEnv } from "../types";
 import { authMiddleware } from "../middleware/auth";
-import { createDb } from "../db";
 
 export function registerR2Routes(app: Hono<AppEnv>) {
-  app.use("/api/r2/*", async (c, next) => {
-    const db = createDb(c.env.DB.connectionString);
-    c.set("db", db);
-    await next();
-  });
   app.all("/api/r2/:key", authMiddleware, async (c) => {
     const key = decodeURIComponent(c.req.param("key")!);
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
     }
 
     if (c.req.method === "HEAD") {
-      const obj = await c.env.REPO_BUCKET.head(key);
+      try {
+        const response = await s3.client.send(new HeadObjectCommand({ Bucket: s3.bucket, Key: key }));
 
-      if (!obj) {
-        return c.text("Not found", 404);
-      }
+        const headers = new Headers();
+        if (response.ContentLength) {
+          headers.set("Content-Length", response.ContentLength.toString());
+        }
+        if (response.ContentType) {
+          headers.set("Content-Type", response.ContentType);
+        }
 
-      const headers = new Headers();
-      if (obj.size) {
-        headers.set("Content-Length", obj.size.toString());
+        return new Response(null, { headers });
+      } catch (err: unknown) {
+        const error = err as { name?: string };
+        if (error.name === "NotFound") {
+          return c.text("Not found", 404);
+        }
+        throw err;
       }
-      if (obj.httpMetadata?.contentType) {
-        headers.set("Content-Type", obj.httpMetadata.contentType);
-      }
-
-      return new Response(null, { headers });
     }
 
     if (c.req.method === "GET") {
-      const obj = await c.env.REPO_BUCKET.get(key);
+      try {
+        const response = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucket, Key: key }));
 
-      if (!obj) {
-        return c.text("Not found", 404);
-      }
+        if (!response.Body) {
+          return c.text("Not found", 404);
+        }
 
-      const headers = new Headers();
-      if (obj.size) {
-        headers.set("Content-Length", obj.size.toString());
-      }
-      if (obj.httpMetadata?.contentType) {
-        headers.set("Content-Type", obj.httpMetadata.contentType);
-      }
+        const headers = new Headers();
+        if (response.ContentLength) {
+          headers.set("Content-Length", response.ContentLength.toString());
+        }
+        if (response.ContentType) {
+          headers.set("Content-Type", response.ContentType);
+        }
 
-      return new Response(obj.body, { headers });
+        const bytes = await response.Body.transformToByteArray();
+        return new Response(bytes, { headers });
+      } catch (err: unknown) {
+        const error = err as { name?: string };
+        if (error.name === "NoSuchKey") {
+          return c.text("Not found", 404);
+        }
+        throw err;
+      }
     }
   });
 
   app.put("/api/r2/:key", authMiddleware, async (c) => {
     const key = decodeURIComponent(c.req.param("key")!);
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
@@ -65,11 +82,14 @@ export function registerR2Routes(app: Hono<AppEnv>) {
     const body = await c.req.arrayBuffer();
     const contentType = c.req.header("Content-Type") || "application/octet-stream";
 
-    await c.env.REPO_BUCKET.put(key, body, {
-      httpMetadata: {
-        contentType,
-      },
-    });
+    await s3.client.send(
+      new PutObjectCommand({
+        Bucket: s3.bucket,
+        Key: key,
+        Body: new Uint8Array(body),
+        ContentType: contentType,
+      })
+    );
 
     return c.json({ success: true });
   });
@@ -77,12 +97,13 @@ export function registerR2Routes(app: Hono<AppEnv>) {
   app.delete("/api/r2/:key", authMiddleware, async (c) => {
     const key = decodeURIComponent(c.req.param("key")!);
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
     }
 
-    await c.env.REPO_BUCKET.delete(key);
+    await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }));
 
     return c.json({ success: true });
   });
@@ -90,27 +111,37 @@ export function registerR2Routes(app: Hono<AppEnv>) {
   app.get("/api/r2/list/:prefix", authMiddleware, async (c) => {
     const prefix = decodeURIComponent(c.req.param("prefix")!);
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
     }
 
     const keys: string[] = [];
-    let cursor: string | undefined;
+    let continuationToken: string | undefined;
 
     do {
-      const result = await c.env.REPO_BUCKET.list({ prefix, cursor });
-      for (const obj of result.objects) {
-        keys.push(obj.key);
+      const response = await s3.client.send(
+        new ListObjectsV2Command({
+          Bucket: s3.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+      for (const obj of response.Contents || []) {
+        if (obj.Key) {
+          keys.push(obj.Key);
+        }
       }
-      cursor = result.truncated ? result.cursor : undefined;
-    } while (cursor);
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
 
     return c.json({ keys });
   });
 
   app.post("/api/r2/batch/get", authMiddleware, async (c) => {
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
@@ -121,12 +152,16 @@ export function registerR2Routes(app: Hono<AppEnv>) {
     const results: Record<string, string | null> = {};
 
     for (const key of keys) {
-      const obj = await c.env.REPO_BUCKET.get(key);
-      if (obj) {
-        const arrayBuffer = await obj.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        results[key] = base64;
-      } else {
+      try {
+        const response = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucket, Key: key }));
+        if (response.Body) {
+          const bytes = await response.Body.transformToByteArray();
+          const base64 = btoa(String.fromCharCode(...bytes));
+          results[key] = base64;
+        } else {
+          results[key] = null;
+        }
+      } catch {
         results[key] = null;
       }
     }
@@ -136,6 +171,7 @@ export function registerR2Routes(app: Hono<AppEnv>) {
 
   app.post("/api/r2/batch/put", authMiddleware, async (c) => {
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
@@ -145,11 +181,14 @@ export function registerR2Routes(app: Hono<AppEnv>) {
 
     for (const item of items) {
       const data = Uint8Array.from(atob(item.data), (c) => c.charCodeAt(0));
-      await c.env.REPO_BUCKET.put(item.key, data, {
-        httpMetadata: {
-          contentType: item.contentType || "application/octet-stream",
-        },
-      });
+      await s3.client.send(
+        new PutObjectCommand({
+          Bucket: s3.bucket,
+          Key: item.key,
+          Body: data,
+          ContentType: item.contentType || "application/octet-stream",
+        })
+      );
     }
 
     return c.json({ success: true });
@@ -158,27 +197,44 @@ export function registerR2Routes(app: Hono<AppEnv>) {
   app.delete("/api/r2/prefix/:prefix", authMiddleware, async (c) => {
     const prefix = decodeURIComponent(c.req.param("prefix")!);
     const user = c.get("user");
+    const s3 = c.get("s3");
 
     if (!user) {
       return c.text("Unauthorized", 401);
     }
 
     const keys: string[] = [];
-    let cursor: string | undefined;
+    let continuationToken: string | undefined;
 
     do {
-      const result = await c.env.REPO_BUCKET.list({ prefix, cursor });
-      for (const obj of result.objects) {
-        keys.push(obj.key);
+      const response = await s3.client.send(
+        new ListObjectsV2Command({
+          Bucket: s3.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+      for (const obj of response.Contents || []) {
+        if (obj.Key) {
+          keys.push(obj.Key);
+        }
       }
-      cursor = result.truncated ? result.cursor : undefined;
-    } while (cursor);
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
 
-    for (let i = 0; i < keys.length; i += 1000) {
-      const batch = keys.slice(i, i + 1000);
-      if (batch.length === 0) continue;
-
-      await Promise.all(batch.map((key) => c.env.REPO_BUCKET.delete(key)));
+    if (keys.length > 0) {
+      const batches: string[][] = [];
+      for (let i = 0; i < keys.length; i += 1000) {
+        batches.push(keys.slice(i, i + 1000));
+      }
+      for (const batch of batches) {
+        await s3.client.send(
+          new DeleteObjectsCommand({
+            Bucket: s3.bucket,
+            Delete: { Objects: batch.map((key) => ({ Key: key })) },
+          })
+        );
+      }
     }
 
     return c.json({ success: true, deleted: keys.length });
