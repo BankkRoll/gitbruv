@@ -9,6 +9,5 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   dts: false,
-  external: ["@gitbruv/auth", "@gitbruv/db"],
-  noExternal: [],
+  noExternal: ["@gitbruv/auth", "@gitbruv/db"],
 });
