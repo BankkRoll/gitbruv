@@ -13,6 +13,7 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 
 WORKDIR /app/apps/web
+ENV NODE_ENV=production
 RUN bun run build
 
 FROM oven/bun:1-alpine AS runner
