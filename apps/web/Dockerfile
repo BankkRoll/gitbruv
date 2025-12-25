@@ -28,4 +28,4 @@ ENV NODE_ENV=production
 EXPOSE 3000
 WORKDIR /app/apps/web
 
-CMD ["bun", "run", "apps/web/dist/server/server.js"]
+CMD ["bun", "run", "dist/server/server.js"]
