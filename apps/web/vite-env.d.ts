@@ -2,8 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_ENV?: string;
-  readonly RAILWAY_PUBLIC_DOMAIN?: string;
-  readonly VITE_API_URL?: string;
+  readonly VITE_RAILWAY_PUBLIC_DOMAIN?: string;
+  readonly VITE_PUBLIC_API_URL?: string;
 }
 
 interface ImportMeta {
