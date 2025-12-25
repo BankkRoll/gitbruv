@@ -21,7 +21,7 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=builder /app/apps/web/dist ./apps/web/dist
+COPY --from=builder /app/apps/web/.output ./apps/web/.output
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/web/server.ts ./apps/web/server.ts
 
