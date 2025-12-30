@@ -6,16 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getPublicServerUrl = () => {
-  if (import.meta.env.VITE_PUBLIC_ENV === "production" || import.meta.env.NODE_ENV === "production") {
-    return `https://${import.meta.env.VITE_RAILWAY_PUBLIC_DOMAIN}`;
+  console.log("PUBLIC SERVER URL", process.env.NODE_ENV, process.env.RAILWAY_PUBLIC_DOMAIN);
+  if (process.env.NODE_ENV === "production") {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   } else {
     return `http://localhost:3000`;
   }
 };
 
 export const getApiUrl = () => {
-  if (import.meta.env.VITE_PUBLIC_ENV === "production" || import.meta.env.NODE_ENV === "production") {
-    return `https://${import.meta.env.VITE_PUBLIC_API_URL}`;
+  console.log("API URL", process.env.NODE_ENV, process.env.API_URL);
+  if (process.env.NODE_ENV === "production") {
+    return `https://${process.env.API_URL}`;
   } else {
     return `http://localhost:3001`;
   }
