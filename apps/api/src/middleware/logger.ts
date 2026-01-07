@@ -50,10 +50,7 @@ export const loggerMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   const timestamp = new Date().toISOString();
 
   console.log(
-    `${colors.dim}[${timestamp}]${colors.reset} ` +
-      `${colors.dim}#${requestId}${colors.reset} ` +
-      `${methodColor}${method.padEnd(7)}${colors.reset} ` +
-      `${path}${colors.dim}${queryString}${colors.reset}`
+    `${colors.dim}[${timestamp}]${colors.reset} ` + `${methodColor}${method.padEnd(7)}${colors.reset} ` + `${path}${colors.dim}${queryString}${colors.reset}`
   );
 
   try {
@@ -64,7 +61,6 @@ export const loggerMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
 
     console.error(
       `${colors.dim}[${new Date().toISOString()}]${colors.reset} ` +
-        `${colors.dim}#${requestId}${colors.reset} ` +
         `${colors.red}ERROR${colors.reset} ` +
         `${path} ${colors.dim}${formatDuration(duration)}${colors.reset}`
     );
@@ -79,9 +75,8 @@ export const loggerMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   console.log(
     `${colors.dim}[${new Date().toISOString()}]${colors.reset} ` +
-      `${colors.dim}#${requestId}${colors.reset} ` +
       `${sColor}${status}${colors.reset} ` +
-      `${path} ${colors.dim}${formatDuration(duration)}${colors.reset}`
+      `    ${path} ${colors.dim}${formatDuration(duration)}${colors.reset}`
   );
 };
 
@@ -94,4 +89,3 @@ export const errorHandler: MiddlewareHandler<AppEnv> = async (c, next) => {
     return c.json({ error: "Internal server error" }, 500);
   }
 };
-

@@ -10,8 +10,10 @@ export const getPublicServerUrl = () => {
   if (process.env.NODE_ENV === "production") {
     if (process.env.RAILWAY_PUBLIC_DOMAIN) {
       return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
-    } else {
+    } else if (process.env.VITE_RAILWAY_PUBLIC_DOMAIN) {
       return `https://${process.env.VITE_RAILWAY_PUBLIC_DOMAIN}`;
+    } else {
+      return `http://localhost:3000`;
     }
   } else {
     return `http://localhost:3000`;
@@ -23,8 +25,10 @@ export const getApiUrl = () => {
   if (process.env.NODE_ENV === "production") {
     if (process.env.API_URL) {
       return `https://${process.env.API_URL}`;
-    } else {
+    } else if (process.env.VITE_API_URL) {
       return `https://${process.env.VITE_API_URL}`;
+    } else {
+      return `http://localhost:3001`;
     }
   } else {
     return `http://localhost:3001`;
