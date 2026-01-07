@@ -4,22 +4,40 @@ import { getApiUrl } from "@/lib/utils";
 export const Route = createFileRoute("/api/$" as any)({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
-      POST: async ({ request }) => {
+      POST: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
-      PUT: async ({ request }) => {
+      PUT: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
-      PATCH: async ({ request }) => {
+      PATCH: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
-      DELETE: async ({ request }) => {
+      DELETE: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
-      OPTIONS: async ({ request }) => {
+      OPTIONS: async ({ request, params }) => {
+        if (params._splat?.startsWith("auth/")) {
+          return new Response("Not Found", { status: 404 });
+        }
         return proxyRequest(request);
       },
     },
@@ -66,6 +84,7 @@ async function proxyRequest(request: Request): Promise<Response> {
       method: request.method,
       headers,
       body,
+      credentials: "include",
     });
 
     console.log(`[Proxy] ${request.method} ${path} -> ${response.status} ${response.statusText}`);
