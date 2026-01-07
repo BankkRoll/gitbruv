@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './app/__root'
 import { Route as MainRouteImport } from './app/_main'
 import { Route as AuthRouteImport } from './app/_auth'
 import { Route as MainIndexRouteImport } from './app/_main/index'
+import { Route as ApiSplatRouteImport } from './app/api/$'
 import { Route as MainSettingsRouteImport } from './app/_main/settings'
 import { Route as MainNewRouteImport } from './app/_main/new'
 import { Route as MainExploreRouteImport } from './app/_main/explore'
@@ -42,6 +43,11 @@ const MainIndexRoute = MainIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MainRoute,
+} as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MainSettingsRoute = MainSettingsRouteImport.update({
   id: '/settings',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof MainExploreRoute
   '/new': typeof MainNewRoute
   '/settings': typeof MainSettingsRouteWithChildren
+  '/api/$': typeof ApiSplatRoute
   '/': typeof MainIndexRoute
   '/$username/$repo': typeof MainUsernameRepoRouteWithChildren
   '/settings/account': typeof MainSettingsAccountRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/register': typeof AuthRegisterRoute
   '/explore': typeof MainExploreRoute
   '/new': typeof MainNewRoute
+  '/api/$': typeof ApiSplatRoute
   '/': typeof MainIndexRoute
   '/settings/account': typeof MainSettingsAccountRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/_main/explore': typeof MainExploreRoute
   '/_main/new': typeof MainNewRoute
   '/_main/settings': typeof MainSettingsRouteWithChildren
+  '/api/$': typeof ApiSplatRoute
   '/_main/': typeof MainIndexRoute
   '/_main/$username/$repo': typeof MainUsernameRepoRouteWithChildren
   '/_main/settings/account': typeof MainSettingsAccountRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/new'
     | '/settings'
+    | '/api/$'
     | '/'
     | '/$username/$repo'
     | '/settings/account'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/explore'
     | '/new'
+    | '/api/$'
     | '/'
     | '/settings/account'
     | '/api/auth/$'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/_main/explore'
     | '/_main/new'
     | '/_main/settings'
+    | '/api/$'
     | '/_main/'
     | '/_main/$username/$repo'
     | '/_main/settings/account'
@@ -258,6 +270,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   MainRoute: typeof MainRouteWithChildren
+  ApiSplatRoute: typeof ApiSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof MainIndexRouteImport
       parentRoute: typeof MainRoute
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_main/settings': {
       id: '/_main/settings'
@@ -500,6 +520,7 @@ const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   MainRoute: MainRouteWithChildren,
+  ApiSplatRoute: ApiSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

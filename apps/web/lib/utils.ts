@@ -5,7 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const normalizeUrl = (url: string) => (url.startsWith("http") ? url : `https://${url}`);
+const normalizeUrl = (url: string) => {
+  if (url.startsWith("http")) return url;
+  if (url.includes("localhost") || url.startsWith("127.0.0.1") || url.startsWith("::1")) {
+    return `http://${url}`;
+  }
+  return `https://${url}`;
+};
 
 export const getPublicServerUrl = () => {
   if (process.env.RAILWAY_PUBLIC_DOMAIN) {

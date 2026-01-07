@@ -49,8 +49,8 @@ async function proxyRequest(request: Request): Promise<Response> {
     );
   }
 
-  const backendPath = path.replace(/^\/api/, "");
-  const backendUrl = `${apiUrl}${backendPath}${url.search}`;
+  const backendUrl = `${apiUrl}${path}${url.search}`;
+  console.log(`[Proxy] ${request.method} ${path} -> ${backendUrl}`);
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -68,6 +68,8 @@ async function proxyRequest(request: Request): Promise<Response> {
       body,
     });
 
+    console.log(`[Proxy] ${request.method} ${path} -> ${response.status} ${response.statusText}`);
+
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
       responseHeaders.set(key, value);
@@ -81,6 +83,7 @@ async function proxyRequest(request: Request): Promise<Response> {
       headers: responseHeaders,
     });
   } catch (error) {
+    console.error(`[Proxy] Fetch error for ${request.method} ${path}:`, error);
     return new Response(JSON.stringify({ error: "Failed to proxy request", message: error instanceof Error ? error.message : "Unknown error" }), {
       status: 502,
       headers: { "Content-Type": "application/json" },
