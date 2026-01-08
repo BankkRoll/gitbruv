@@ -81,12 +81,12 @@ function isBlockedEmailDomain(email: string): boolean {
 const getTrustedOrigins = (): string[] => {
   const origins: string[] = ["http://localhost:3000"];
 
-  if (process.env.PUBLIC_SERVER_URL) {
-    origins.push(process.env.PUBLIC_SERVER_URL);
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    origins.push(process.env.RAILWAY_PUBLIC_DOMAIN);
   }
 
-  if (process.env.BETTER_AUTH_URL) {
-    origins.push(process.env.BETTER_AUTH_URL);
+  if (process.env.API_URL) {
+    origins.push(process.env.API_URL);
   }
 
   return origins;
