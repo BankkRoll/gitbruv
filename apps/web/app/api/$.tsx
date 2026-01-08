@@ -97,11 +97,19 @@ async function proxyRequest(request: Request): Promise<Response> {
     console.log(`[Proxy] ${request.method} ${path} -> ${response.status} ${response.statusText} (from ${backendUrl})`);
 
     const responseHeaders = new Headers();
+    const headersToSkip = ["content-encoding", "transfer-encoding", "content-length", "connection"];
     response.headers.forEach((value, key) => {
-      responseHeaders.set(key, value);
+      const lowerKey = key.toLowerCase();
+      if (!headersToSkip.includes(lowerKey)) {
+        responseHeaders.set(key, value);
+      }
     });
 
     const responseBody = await response.arrayBuffer();
+
+    if (responseBody.byteLength > 0) {
+      responseHeaders.set("Content-Length", responseBody.byteLength.toString());
+    }
 
     if (!response.ok) {
       const errorText = new TextDecoder().decode(responseBody);
