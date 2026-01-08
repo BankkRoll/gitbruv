@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check, Copy, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getGitUrl } from "@/lib/utils";
+import { getPublicServerUrl } from "@/lib/utils";
 
 export function CloneUrl({ username, repoName }: { username: string; repoName: string }) {
   const [copied, setCopied] = useState(false);
   // const [protocol, setProtocol] = useState<"https" | "ssh">("https");
 
-  const gitUrl = getGitUrl();
+  const gitUrl = getPublicServerUrl() + "/api/git";
   const httpsUrl = `${gitUrl}/${username}/${repoName}.git`;
   // const sshUrl = `git@gitbruv.local:${username}/${repoName}.git`;
 

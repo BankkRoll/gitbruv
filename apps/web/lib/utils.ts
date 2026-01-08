@@ -21,6 +21,8 @@ export const getPublicServerUrl = () => {
   if (import.meta.env.VITE_RAILWAY_PUBLIC_DOMAIN) {
     return `https://${import.meta.env.VITE_RAILWAY_PUBLIC_DOMAIN}`;
   }
+
+  return "http://localhost:3000";
 };
 
 export const getApiUrl = () => {
