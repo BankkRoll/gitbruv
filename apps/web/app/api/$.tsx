@@ -54,11 +54,13 @@ async function proxyRequest(request: Request): Promise<Response> {
 
   const apiUrl = getApiUrl();
   if (!apiUrl) {
-    console.error("API URL not configured. process.env.API_URL:", process.env.API_URL, "NODE_ENV:", process.env.NODE_ENV);
+    const errorMsg = `API URL not configured. process.env.API_URL: ${process.env.API_URL}, NODE_ENV: ${process.env.NODE_ENV}`;
+    console.error(`[Proxy] ${errorMsg}`);
     return new Response(
       JSON.stringify({
         error: "API URL not configured",
         message: "API_URL environment variable is not set in production",
+        details: errorMsg,
       }),
       {
         status: 500,
@@ -72,7 +74,8 @@ async function proxyRequest(request: Request): Promise<Response> {
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== "host" && key.toLowerCase() !== "connection" && key.toLowerCase() !== "content-length") {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey !== "host" && lowerKey !== "connection" && lowerKey !== "content-length") {
       headers.set(key, value);
     }
   });
@@ -87,7 +90,12 @@ async function proxyRequest(request: Request): Promise<Response> {
       credentials: "include",
     });
 
-    console.log(`[Proxy] ${request.method} ${path} -> ${response.status} ${response.statusText}`);
+    console.log(`[Proxy] ${request.method} ${path} -> ${response.status} ${response.statusText} (from ${backendUrl})`);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      console.error(`[Proxy] Backend returned error for ${path}:`, response.status, errorText.substring(0, 200));
+    }
 
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
@@ -102,10 +110,19 @@ async function proxyRequest(request: Request): Promise<Response> {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error(`[Proxy] Fetch error for ${request.method} ${path}:`, error);
-    return new Response(JSON.stringify({ error: "Failed to proxy request", message: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error(`[Proxy] Fetch error for ${request.method} ${path} -> ${backendUrl}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return new Response(
+      JSON.stringify({
+        error: "Failed to proxy request",
+        message: errorMessage,
+        backendUrl,
+        path,
+      }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }
