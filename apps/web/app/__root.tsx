@@ -1,6 +1,5 @@
 import { Outlet, createRootRoute, HeadContent, Scripts, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
-import { Analytics } from "@vercel/analytics/react";
 import { Button } from "@/components/ui/button";
 import { GitBranch, Home } from "lucide-react";
 import appCss from "./globals.css?url";
@@ -60,7 +59,6 @@ function RootLayout() {
       <body className="min-h-screen">
         <Outlet />
         <Toaster richColors position="top-right" />
-        <Analytics />
         <Scripts />
       </body>
     </html>
