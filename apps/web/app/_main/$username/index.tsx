@@ -202,17 +202,25 @@ function ProfilePage() {
 
         <div className="flex-1 min-w-0">
           <Tabs defaultValue={activeTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="repositories" asChild>
-                <Link to="/$username" params={{ username }}>
-                  <BookOpen className="h-4 w-4" />
-                  Repositories
+            <TabsList className="w-full justify-start h-auto bg-transparent border-b border-border rounded-none p-0 mb-6 gap-2">
+              <TabsTrigger
+                value="repositories"
+                asChild
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-accent rounded-none px-4 py-3 h-auto"
+              >
+                <Link to="/$username" params={{ username }} className="gap-2 text-sm">
+                  <BookOpen className="h-4 w-4 text-muted-foreground/80" />
+                  <span>Repositories</span>
                 </Link>
               </TabsTrigger>
-              <TabsTrigger value="starred" asChild>
-                <Link to="/$username" params={{ username }} search={{ tab: "starred" }}>
-                  <Star className="h-4 w-4" />
-                  Starred
+              <TabsTrigger
+                value="starred"
+                asChild
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-accent rounded-none px-4 py-3 h-auto"
+              >
+                <Link to="/$username" params={{ username }} search={{ tab: "starred" }} className="gap-2 text-sm">
+                  <Star className="h-4 w-4 text-muted-foreground/80" />
+                  <span>Starred</span>
                 </Link>
               </TabsTrigger>
             </TabsList>

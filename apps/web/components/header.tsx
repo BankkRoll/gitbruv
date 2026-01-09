@@ -1,19 +1,25 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, LogOut, User, ChevronDown, Settings, Compass, Sun, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useUserProfile } from "@/lib/hooks/use-users";
+import { Link, useNavigate, useLocation, useParams } from "@tanstack/react-router";
+import { Bell, Inbox, LogOut, Moon, Plus, Settings, Sun, User } from "lucide-react";
 import { useTheme } from "tanstack-theme-kit";
 
 export function Header() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const location = useLocation();
+  const params = useParams({ strict: false });
 
   const { data: session } = useSession();
   // @ts-ignore
   const { data: user } = useUserProfile(session?.user?.username || "");
+
+  const isRepoPage = location.pathname.match(/\/[^/]+\/[^/]+/);
+  const username = params.username as string | undefined;
+  const repoName = params.repo as string | undefined;
 
   async function handleSignOut() {
     await signOut();
@@ -21,38 +27,50 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-sidebar">
-      <div className="px-4 flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <span className="h-8 w-8 bg-accent rounded-full" />
+    <header className="sticky top-0 z-50 w-full bg-background">
+      <div className="px-4 md:px-6 flex h-14 items-center justify-between">
+        <div className="flex items-center gap-4 flex-1">
+          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
+            <div className="h-8 w-8 bg-foreground rounded-full flex items-center justify-center text-background font-bold text-lg" />
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
-              <Link to="/explore" className="gap-2">
-                <Compass className="h-4 w-4" />
-                Explore
+
+          {isRepoPage && username && repoName && (
+            <div className="flex items-center gap-1 text-sm">
+              <Link to="/$username" params={{ username }} className="text-accent hover:underline">
+                {username}
               </Link>
-            </Button>
-          </nav>
+              <span className="text-muted-foreground">/</span>
+              <Link to="/$username/$repo" params={{ username, repo: repoName }} className="text-accent hover:underline font-semibold">
+                {repoName}
+              </Link>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground rounded-md"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground rounded-md">
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground rounded-md">
+              <Inbox className="h-4 w-4" />
+            </Button>
+          </div>
+
           {session?.user ? (
-            <>
+            <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-muted-foreground hover:text-foreground">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground border border-border rounded-md">
                     <Plus className="h-4 w-4" />
-                    <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -67,10 +85,10 @@ export function Header() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 rounded-full p-0 overflow-hidden ring-2 ring-transparent hover:ring-accent/50 transition-all">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="h-8 w-8 rounded-full p-0 overflow-hidden hover:opacity-80 transition-opacity">
+                    <Avatar className="h-8 w-8 border border-border">
                       <AvatarImage src={user?.avatarUrl || undefined} />
-                      <AvatarFallback className="bg-linear-to-br from-accent/40 to-primary/40 text-foreground text-xs font-semibold">
+                      <AvatarFallback className="bg-accent/10 text-accent text-xs font-semibold">
                         {session.user.name?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
@@ -107,13 +125,13 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" asChild className="text-sm font-semibold text-foreground/80 hover:text-foreground">
                 <Link to="/login">Sign in</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button size="sm" asChild className="h-8 text-sm font-semibold">
                 <Link to="/register">Sign up</Link>
               </Button>
             </div>
