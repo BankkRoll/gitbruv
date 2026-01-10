@@ -1,0 +1,57 @@
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Tabs } from "expo-router";
+
+import { useColorScheme } from "@/components/useColorScheme";
+
+function TabBarIcon(props: {
+  name: React.ComponentProps<typeof FontAwesome>["name"];
+  color: string;
+}) {
+  return <FontAwesome size={24} style={{ marginBottom: -3 }} {...props} />;
+}
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: isDark ? "#60a5fa" : "#2563eb",
+        tabBarInactiveTintColor: isDark ? "#6b7280" : "#9ca3af",
+        tabBarStyle: {
+          backgroundColor: isDark ? "#111827" : "#ffffff",
+          borderTopColor: isDark ? "#1f2937" : "#e5e7eb",
+        },
+        headerStyle: {
+          backgroundColor: isDark ? "#111827" : "#ffffff",
+        },
+        headerTintColor: isDark ? "#f9fafb" : "#111827",
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="compass" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
