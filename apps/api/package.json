@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --target bun --dts",
+    "build": "tsup",
     "start": "bun dist/server.js"
   },
   "dependencies": {
