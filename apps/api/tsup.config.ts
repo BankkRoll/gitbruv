@@ -9,6 +9,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   dts: false,
-  noExternal: [/.*/],
+  noExternal: [/^(?!bun).*/],
   external: ["bun"],
 });
