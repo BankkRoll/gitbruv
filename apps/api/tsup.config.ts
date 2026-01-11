@@ -9,6 +9,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   dts: false,
-  noExternal: ["@gitbruv/auth", "@gitbruv/db"],
-  external: ["bun", "dotenv", "@aws-sdk/client-s3", "bcryptjs", "drizzle-orm", "hono", "isomorphic-git", "postgres"],
+  noExternal: [/.*/],
+  external: ["bun"],
 });
