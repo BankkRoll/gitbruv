@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@gitbruv/web --filter=@gitbruv/api",
     "dev:web": "turbo dev --filter=@gitbruv/web",
     "dev:api": "turbo dev --filter=@gitbruv/api",
     "dev:mobile": "turbo dev --filter=@gitbruv/mobile",

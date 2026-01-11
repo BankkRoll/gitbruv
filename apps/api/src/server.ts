@@ -1,4 +1,4 @@
-import { serve } from "@hono/node-server";
+import { serve } from "bun";
 import { config } from "dotenv";
 import { resolve } from "path";
 
