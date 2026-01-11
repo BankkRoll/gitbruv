@@ -28,6 +28,6 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 
 ENV NODE_ENV=production
 EXPOSE 3001
-WORKDIR /app/apps/api
+WORKDIR /app
 
-CMD ["bun", "run", "dist/server.js"]
+CMD ["bun", "run", "apps/api/dist/server.js"]
