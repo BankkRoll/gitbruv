@@ -69,7 +69,7 @@ export default function ProfileScreen() {
     <View className="flex-1">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-36"
+        contentContainerClassName="px-4 py-4"
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor="#60a5fa" />}
       >
@@ -91,9 +91,7 @@ export default function ProfileScreen() {
 
         <View className="flex-row items-center justify-between mb-3 mt-2">
           <Text className="text-white text-base font-semibold">Your Repositories</Text>
-          {repos.length > 0 && (
-            <Text className="text-white/40 text-xs">{repos.length}</Text>
-          )}
+          {repos.length > 0 && <Text className="text-white/40 text-xs">{repos.length}</Text>}
         </View>
 
         {isLoading ? (
@@ -119,7 +117,9 @@ export default function ProfileScreen() {
                       <View className="flex-row items-center mb-1">
                         <Text className="text-white text-[15px] font-semibold mr-2">{repo.name}</Text>
                         <View className={`px-1.5 py-0.5 rounded-md ${repo.visibility === "private" ? "bg-yellow-500/20" : "bg-green-500/20"}`}>
-                          <Text className={`text-[10px] font-semibold ${repo.visibility === "private" ? "text-yellow-400" : "text-green-500"}`}>{repo.visibility}</Text>
+                          <Text className={`text-[10px] font-semibold ${repo.visibility === "private" ? "text-yellow-400" : "text-green-500"}`}>
+                            {repo.visibility}
+                          </Text>
                         </View>
                       </View>
                       {repo.description && (
@@ -152,4 +152,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-

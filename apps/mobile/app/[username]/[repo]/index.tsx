@@ -94,7 +94,7 @@ export default function RepositoryScreen() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerClassName="flex-1 px-4 pt-4 pb-20"
+        contentContainerClassName="flex-1 px-4 py-4"
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor="#60a5fa" />}
       >

@@ -24,7 +24,7 @@ export default function HomeScreen() {
     <View className="flex-1">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-36"
+        contentContainerClassName="px-4 py-4 flex-1"
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor="#60a5fa" />}
       >

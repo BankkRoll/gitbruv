@@ -69,12 +69,6 @@ function RootLayoutNav() {
                   title: "",
                 }}
               />
-              {/* <Stack.Screen
-                name="[username]"
-                options={{
-                  headerShown: false,
-                }}
-              /> */}
             </Stack.Protected>
           </Stack>
         </ThemeProvider>
