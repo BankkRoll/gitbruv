@@ -64,7 +64,7 @@ export function FileTree({
   basePath?: string
 }) {
   return (
-    <div className="bg-background">
+    <div>
       {files.map((file) => {
         const Icon = getFileIcon(file.name, file.type)
         const route =
@@ -76,13 +76,13 @@ export function FileTree({
         return (
           <div
             key={file.oid + file.name}
-            className="flex items-center h-10 px-4 border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors group"
+            className="flex items-center h-9 px-4 border-b border-border last:border-0 hover:bg-secondary/30 transition-colors"
           >
-            <div className="flex items-center justify-center w-5 h-5 shrink-0 mr-3">
+            <div className="flex items-center justify-center w-5 h-5 shrink-0 mr-2.5">
               <Icon
                 className={cn(
                   "h-4 w-4",
-                  file.type === "tree" ? "text-accent fill-accent/20" : "text-muted-foreground"
+                  file.type === "tree" ? "text-primary" : "text-muted-foreground"
                 )}
               />
             </div>
@@ -91,17 +91,13 @@ export function FileTree({
               <Link
                 to={route}
                 params={{ username, repo: repoName, _splat: splat }}
-                className="text-sm text-foreground hover:text-accent hover:underline truncate mr-4"
+                className="text-sm hover:text-primary hover:underline truncate"
               >
                 {file.name}
               </Link>
-              
-              <span className="hidden md:block text-sm text-muted-foreground truncate flex-1 font-normal opacity-80 group-hover:opacity-100 transition-opacity">
-                {file.name === ".kamal" ? "well" : file.name.includes("apps/web") ? "fix webhook" : file.name === "cmd" ? "fix" : "hmm"}
-              </span>
             </div>
 
-            <div className="text-sm text-muted-foreground shrink-0 tabular-nums font-normal ml-4">
+            <div className="text-xs text-muted-foreground shrink-0 tabular-nums ml-4">
               last month
             </div>
           </div>

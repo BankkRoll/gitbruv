@@ -40,14 +40,13 @@ export function StarButton({
       onClick={handleClick}
       disabled={isMutating}
       className={cn(
-        "h-7 px-2.5 rounded-md border-r-0 text-xs font-semibold bg-secondary hover:bg-muted border border-border shadow-sm flex items-center gap-2",
-        starred && "text-accent",
+        "h-7 px-2.5 text-xs font-medium border border-border flex items-center gap-1.5",
         className
       )}
     >
-      <Star className={cn("h-3.5 w-3.5 text-muted-foreground", starred && "fill-accent text-accent")} />
-      <span className="text-foreground">{starred ? "Starred" : "Star"}</span>
-      <span className="px-1.5 py-0.5 rounded-full bg-muted-foreground/20 text-foreground font-medium text-[10px]">{count}</span>
+      <Star className={cn("h-3.5 w-3.5", starred ? "fill-primary text-primary" : "text-muted-foreground")} />
+      <span>{starred ? "Starred" : "Star"}</span>
+      <span className="px-1.5 py-0.5 bg-foreground/10 font-medium text-[10px]">{count}</span>
     </Button>
   );
 }

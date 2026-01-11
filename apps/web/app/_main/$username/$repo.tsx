@@ -46,9 +46,7 @@ function RepoLayout() {
                 <>
                   <tab.icon className={cn("h-4 w-4 text-muted-foreground")} />
                   <span>{tab.name}</span>
-                  {tab.count !== undefined && (
-                    <span className="px-1.5 py-0.5 text-[11px] rounded-full bg-muted-foreground/20 text-foreground font-medium">{tab.count}</span>
-                  )}
+                  {tab.count !== undefined && <span className="px-1.5 py-0.5 text-[10px] bg-foreground/10 font-medium">{tab.count}</span>}
                 </>
               );
 
@@ -59,7 +57,7 @@ function RepoLayout() {
                     to={tab.href as any}
                     params={{ username, repo: repoName } as any}
                     className={cn(
-                      "flex items-center gap-2 px-3 h-9 text-sm rounded-lg transition-colors",
+                      "flex items-center gap-2 px-3 h-9 text-sm transition-colors",
                       active ? "bg-foreground text-background font-semibold" : "border-transparent text-foreground hover:bg-accent/10"
                     )}
                   >
