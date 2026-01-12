@@ -299,25 +299,42 @@ async fn get_tree_route(
 
     match files {
         Some(entries) => {
-            let readme_oid = if path.is_empty() {
-                entries.iter()
-                    .find(|f| f.name.to_lowercase() == "readme.md" && f.entry_type == "blob")
-                    .map(|f| f.oid.clone())
-            } else {
-                None
-            };
             Ok(Json(serde_json::json!({
                 "files": entries,
                 "isEmpty": false,
-                "readmeOid": readme_oid,
             })))
         },
         None => Ok(Json(serde_json::json!({
             "files": [],
             "isEmpty": true,
-            "readmeOid": null,
         }))),
     }
+}
+
+async fn get_readme_oid(
+    State(state): State<AppState>,
+    Extension(auth): Extension<AuthUser>,
+    Path((owner, name)): Path<(String, String)>,
+    Query(query): Query<TreeQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let (repo, store, _) = get_repo_and_store(&state, &owner, &name).await?;
+
+    if repo.visibility == "private" {
+        if auth.0.as_ref().map(|u| u.id != repo.owner_id).unwrap_or(true) {
+            return Err((StatusCode::NOT_FOUND, "Repository not found".to_string()));
+        }
+    }
+
+    let branch = query.branch.as_deref().unwrap_or("main");
+    let files = get_tree(&store, branch, "").await;
+
+    let readme_oid = files.and_then(|entries| {
+        entries.iter()
+            .find(|f| f.name.to_lowercase() == "readme.md" && f.entry_type == "blob")
+            .map(|f| f.oid.clone())
+    });
+
+    Ok(Json(serde_json::json!({ "readmeOid": readme_oid })))
 }
 
 async fn get_file_route(
@@ -622,6 +639,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/repositories/{owner}/{name}/commits/count", get(get_commit_count))
         .route("/api/repositories/{owner}/{name}/tree", get(get_tree_route))
         .route("/api/repositories/{owner}/{name}/file", get(get_file_route))
+        .route("/api/repositories/{owner}/{name}/readme-oid", get(get_readme_oid))
         .route("/api/repositories/{owner}/{name}/readme", get(get_readme))
         .route("/api/repositories/{owner}/{name}/info", get(get_repo_info))
         .route("/api/repositories/{owner}/{name}/page-data", get(get_page_data))

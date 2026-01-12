@@ -52,6 +52,13 @@ export function useRepoCommitCount(owner: string, name: string, branch: string) 
   return useSWR<{ count: number }>(owner && name && branch ? `/api/repositories/${owner}/${name}/commits/count?branch=${branch}` : null, fetcher);
 }
 
+export function useRepoReadmeOid(owner: string, name: string, branch: string) {
+  return useSWR<{ readmeOid: string | null }>(
+    owner && name && branch ? `/api/repositories/${owner}/${name}/readme-oid?branch=${branch}` : null,
+    fetcher
+  );
+}
+
 export function useRepoReadme(owner: string, name: string, oid: string | null) {
   return useSWR<{ content: string }>(owner && name && oid ? `/api/repositories/${owner}/${name}/readme?oid=${oid}` : null, fetcher);
 }

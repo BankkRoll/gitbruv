@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRepositoryInfo, useRepoTree, useRepoBranches, useRepoReadme, useRepoCommits, useRepoCommitCount } from "@/lib/hooks/use-repositories";
+import { useRepositoryInfo, useRepoTree, useRepoBranches, useRepoReadmeOid, useRepoReadme, useRepoCommits, useRepoCommitCount } from "@/lib/hooks/use-repositories";
 import { useUserAvatarByEmail } from "@/lib/hooks/use-users";
 import { FileTree } from "@/components/file-tree";
 import { CodeViewer } from "@/components/code-viewer";
@@ -24,6 +24,7 @@ function RepoPage() {
 
   const { data: treeData, isLoading: isLoadingTree } = useRepoTree(username, repoName, defaultBranch);
   const { data: branchesData, isLoading: isLoadingBranches } = useRepoBranches(username, repoName);
+  const { data: readmeOidData, isLoading: isLoadingReadmeOid } = useRepoReadmeOid(username, repoName, defaultBranch);
   const { data: commitData } = useRepoCommits(username, repoName, defaultBranch, 1);
   const { data: commitCountData, isLoading: isLoadingCommitCount } = useRepoCommitCount(username, repoName, defaultBranch);
 
@@ -31,7 +32,7 @@ function RepoPage() {
   const files = treeData?.files || [];
   const isEmpty = treeData?.isEmpty ?? true;
   const branches = branchesData?.branches || [];
-  const readmeOid = treeData?.readmeOid;
+  const readmeOid = readmeOidData?.readmeOid;
   const lastCommit = commitData?.commits?.[0];
   const commitCount = commitCountData?.count || 0;
 
@@ -79,7 +80,17 @@ function RepoPage() {
           </>
         )}
 
-        {readmeOid && (
+        {isLoadingReadmeOid ? (
+          <div className="border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">README.md</span>
+            </div>
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          </div>
+        ) : readmeOid ? (
           <div className="border border-border bg-card overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
               <BookOpen className="h-4 w-4 text-primary" />
@@ -89,7 +100,7 @@ function RepoPage() {
               <ReadmeContent username={username} repoName={repoName} readmeOid={readmeOid} />
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

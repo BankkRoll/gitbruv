@@ -69,7 +69,6 @@ export type RepoInfo = {
 export type TreeResponse = {
   files: FileEntry[];
   isEmpty: boolean;
-  readmeOid: string | null;
 };
 
 export type RepoPageData = {
