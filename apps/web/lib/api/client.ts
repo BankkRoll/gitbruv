@@ -61,6 +61,17 @@ export type FileEntry = {
   path: string;
 };
 
+export type RepoInfo = {
+  repo: RepositoryWithOwner;
+  isOwner: boolean;
+};
+
+export type TreeResponse = {
+  files: FileEntry[];
+  isEmpty: boolean;
+  readmeOid: string | null;
+};
+
 export type RepoPageData = {
   repo: RepositoryWithOwner;
   files: FileEntry[];
@@ -128,6 +139,8 @@ export const api = {
 
     getWithStars: (owner: string, name: string) => apiFetch<RepositoryWithOwner>(`/api/repositories/${owner}/${name}/with-stars`),
 
+    getInfo: (owner: string, name: string) => apiFetch<RepoInfo>(`/api/repositories/${owner}/${name}/info`),
+
     getPageData: (owner: string, name: string) => apiFetch<RepoPageData>(`/api/repositories/${owner}/${name}/page-data`),
 
     getUserRepos: (username: string) => apiFetch<{ repos: RepositoryWithStars[] }>(`/api/repositories/user/${username}`),
@@ -182,7 +195,7 @@ export const api = {
   },
 
   settings: {
-    getCurrentUser: () => apiFetch<UserProfile>(`/api/settings/current-user`),
+    getCurrentUser: () => apiFetch<{ user: UserProfile }>(`/api/settings`),
 
     updateProfile: (data: { name: string; username: string; bio?: string; location?: string; website?: string; pronouns?: string }) =>
       apiFetch<{ success: boolean; username: string }>(`/api/settings/profile`, {
