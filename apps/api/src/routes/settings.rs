@@ -158,11 +158,7 @@ async fn upload_avatar(
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to upload avatar: {}", e)))?;
 
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-        let avatar_url = format!("/avatar/{}.{}?v={}", user.id, ext, timestamp);
+        let avatar_url = format!("/api/avatar/{}.{}", user.id, ext);
 
         sqlx::query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2")
             .bind(&avatar_url)

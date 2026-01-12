@@ -52,5 +52,5 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(health))
         .route("/api/health", get(health))
-        .route("/avatar/{filename}", get(get_avatar))
+        .route("/api/avatar/{filename}", get(get_avatar))
 }
