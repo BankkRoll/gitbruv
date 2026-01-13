@@ -34,17 +34,25 @@ export function Header() {
             <div className="h-8 w-8 bg-foreground flex items-center justify-center text-background font-bold text-lg" />
           </Link>
 
-          {isRepoPage && username && repoName && (
-            <div className="flex items-center gap-1.5 text-sm">
-              <Link to="/$username" params={{ username }} className="text-primary hover:underline">
-                {username}
-              </Link>
-              <span className="text-muted-foreground">/</span>
-              <Link to="/$username/$repo" params={{ username, repo: repoName }} className="text-primary hover:underline font-semibold">
-                {repoName}
-              </Link>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 text-sm">
+            {isRepoPage && username && repoName ? (
+              <>
+                <Link to="/$username" params={{ username }} className="text-primary hover:underline">
+                  {username}
+                </Link>
+                <span className="text-muted-foreground">/</span>
+                <Link to="/$username/$repo" params={{ username, repo: repoName }} className="text-primary hover:underline font-semibold">
+                  {repoName}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/explore" className="text-primary hover:underline">
+                  Explore
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-1">
