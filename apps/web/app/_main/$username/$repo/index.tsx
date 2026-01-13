@@ -1,15 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRepositoryInfo, useRepoTree, useRepoBranches, useRepoReadmeOid, useRepoReadme, useRepoCommits, useRepoCommitCount, useUserAvatarByEmail } from "@gitbruv/hooks";
-import { FileTree } from "@/components/file-tree";
-import { CodeViewer } from "@/components/code-viewer";
-import { CloneUrl } from "@/components/clone-url";
 import { BranchSelector } from "@/components/branch-selector";
+import { CloneUrl } from "@/components/clone-url";
+import { CodeViewer } from "@/components/code-viewer";
+import { FileTree } from "@/components/file-tree";
 import { StarButton } from "@/components/star-button";
-import { GitBranch, Loader2, History, BookOpen, Star, GitFork, Eye, Copy, Check, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useRepoBranches, useRepoCommitCount, useRepoCommits, useRepoReadme, useRepoReadmeOid, useRepositoryInfo, useRepoTree } from "@gitbruv/hooks";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { useState } from "react";
+import { BookOpen, Eye, GitBranch, GitFork, History, Loader2, Star } from "lucide-react";
 
 export const Route = createFileRoute("/_main/$username/$repo/")({
   component: RepoPage,
@@ -185,37 +184,13 @@ function RepoHeader({ repo, username }: { repo: any; username: string }) {
   );
 }
 
-// function QuickClone({ username, repoName }: { username: string; repoName: string }) {
-//   const [copied, setCopied] = useState(false);
-//   const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/git/${username}/${repoName}.git`;
-
-//   async function copy() {
-//     await navigator.clipboard.writeText(url);
-//     setCopied(true);
-//     setTimeout(() => setCopied(false), 2000);
-//   }
-
-//   return (
-//     <div className="flex items-center gap-2">
-//       <code className="px-3 py-1.5 bg-secondary/50 border border-border text-xs font-mono text-muted-foreground truncate max-w-[300px]">
-//         {url}
-//       </code>
-//       <Button variant="secondary" size="sm" onClick={copy} className="shrink-0 border border-border">
-//         {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-//       </Button>
-//     </div>
-//   );
-// }
-
 function LastCommitBar({ lastCommit }: { lastCommit: any }) {
-  const { data: avatarData } = useUserAvatarByEmail(lastCommit?.author.email);
-
   if (!lastCommit) return null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-secondary/30 border border-border">
       <Avatar className="h-6 w-6 shrink-0">
-        <AvatarImage src={avatarData?.avatarUrl || undefined} />
+        <AvatarImage src={lastCommit.author.avatarUrl || undefined} />
         <AvatarFallback className="text-[10px] bg-muted">{lastCommit.author.name.charAt(0)}</AvatarFallback>
       </Avatar>
       <div className="flex items-center gap-2 min-w-0 flex-1">
