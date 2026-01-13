@@ -141,17 +141,23 @@ git push origin main
 
 ## Architecture
 
-### Authentication Flow
-- **better-auth** (web app) handles login/signup and creates sessions in PostgreSQL
-- **Rust API** validates sessions via in-memory cache with database fallback
-- Both services share the same PostgreSQL database as the source of truth
+**Services:**
+- **Web App** (Port 3000): TanStack Router frontend, proxies `/api/*` to Rust API, handles better-auth at `/api/auth/*`
+- **Rust API** (Port 3001): Axum backend, business logic, Git operations, session validation
+- **PostgreSQL**: Shared database for users, sessions, repositories, metadata
+- **Cloudflare R2**: Git repository storage (bare repos)
 
-### Git Storage
-Git repositories are stored in Cloudflare R2 as bare repos. When git operations occur:
+**Request Flow:**
+- Web UI → `/api/*` → Proxied to Rust API → Validates session → Queries DB/R2 → Returns data
+- Git operations → `/:username/:repo.git/*` → Rust API → Syncs repo from R2 → Executes Git → Returns response
+- Mobile app → Direct Rust API calls
 
-1. Repository files are synced from R2 to a temp directory
-2. Git commands execute against the temp directory using Rust (gix)
-3. For push operations, changes are synced back to R2
-4. Temp directory is cleaned up
+**Authentication:**
+- better-auth creates sessions in PostgreSQL
+- Rust API validates via in-memory cache (fast) with DB fallback
+- Both services share PostgreSQL as source of truth
 
-This allows serverless deployment while maintaining full Git compatibility.
+**Git Storage:**
+- Repos stored in R2 as bare repos (`repos/{username}/{repo}/.git/`)
+- Operations: Sync R2 → Temp dir → Execute → Sync back (for writes) → Cleanup
+- Enables serverless deployment with full Git compatibility
