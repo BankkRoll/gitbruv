@@ -1,12 +1,11 @@
 import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useLocalSearchParams, Link, Stack, RelativePathString } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { type FileEntry } from "@/lib/api";
 import { useRepositoryInfo, useRepositoryTree, useRepositoryReadmeOid, useRepositoryReadme, useToggleStar } from "@/lib/hooks/use-repository";
 import { useQueryClient } from "@tanstack/react-query";
-import { MonoText } from "@/components/StyledText";
+import Markdown from "react-native-markdown-display";
 
 export default function RepositoryScreen() {
   const { username, repo: repoName } = useLocalSearchParams<{ username: string; repo: string }>();
@@ -251,9 +250,15 @@ export default function RepositoryScreen() {
                   </View>
                 ) : readmeData?.content ? (
                   <ScrollView showsVerticalScrollIndicator={true} className="max-h-[400px]" nestedScrollEnabled={true}>
-                    <MonoText className="text-white/90 text-xs leading-5" style={{ fontFamily: "SpaceMono" }}>
+                    <Markdown
+                      style={StyleSheet.create({
+                        text: {
+                          color: "#ffffff",
+                        },
+                      })}
+                    >
                       {readmeData.content}
-                    </MonoText>
+                    </Markdown>
                   </ScrollView>
                 ) : (
                   <Text className="text-white/40 text-xs">Failed to load README content</Text>

@@ -11,7 +11,7 @@ import { useColorScheme } from "@/components/useColorScheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "@/lib/query-client";
 import { useSession } from "@/lib/auth-client";
-
+import * as Updates from "expo-updates";
 export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
@@ -25,6 +25,14 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
+
+  const { isUpdatePending } = Updates.useUpdates();
+
+  useEffect(() => {
+    if (isUpdatePending) {
+      Updates.reloadAsync();
+    }
+  }, [isUpdatePending]);
 
   useEffect(() => {
     if (error) throw error;

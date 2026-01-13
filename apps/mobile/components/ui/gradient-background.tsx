@@ -1,5 +1,4 @@
 import { View, StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 
 type GradientBackgroundProps = {
   children: React.ReactNode;
