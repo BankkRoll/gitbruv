@@ -1,6 +1,6 @@
 # gitbruv
 
-A GitHub clone built with Next.js, featuring real Git repository support with Cloudflare R2 storage.
+A GitHub clone built with TanStack Router and Rust, featuring real Git repository support with Cloudflare R2 storage.
 
 ## Tech Stack
 
@@ -120,7 +120,8 @@ gitbruv/
 │   └── mobile/           # Mobile App (React Native/Expo)
 ├── packages/
 │   ├── auth/             # better-auth configuration
-│   └── db/               # Database schema (Drizzle ORM)
+│   ├── db/               # Database schema (Drizzle ORM)
+│   └── hooks/            # Shared React hooks & context
 ```
 
 ## Git Operations
