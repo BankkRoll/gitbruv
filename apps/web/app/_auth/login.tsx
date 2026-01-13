@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { signIn } from "@/lib/auth-client";
+import { signIn, authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Fingerprint } from "lucide-react";
 
 export const Route = createFileRoute("/_auth/login")({
   component: LoginPage,
@@ -14,8 +14,19 @@ export const Route = createFileRoute("/_auth/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      PublicKeyCredential.isConditionalMediationAvailable &&
+      PublicKeyCredential.isConditionalMediationAvailable()
+    ) {
+      void authClient.signIn.passkey({ autoFill: true });
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +52,28 @@ function LoginPage() {
     }
   }
 
+  async function handlePasskeySignIn() {
+    setPasskeyLoading(true);
+
+    try {
+      const { error } = await authClient.signIn.passkey();
+
+      if (error) {
+        toast.error(error.message || "Failed to sign in with passkey");
+        return;
+      }
+
+      toast.success("Welcome back!");
+      navigate({ to: "/" });
+    } catch (err) {
+      if (err instanceof Error && err.name !== "NotAllowedError") {
+        toast.error("Something went wrong");
+      }
+    } finally {
+      setPasskeyLoading(false);
+    }
+  }
+
   return (
     <div className="w-full">
       <div className="border border-border bg-card/80 backdrop-blur-sm p-8">
@@ -57,6 +90,7 @@ function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
+              autoComplete="username webauthn"
               className="bg-input/50 h-11"
             />
           </div>
@@ -69,10 +103,11 @@ function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              autoComplete="current-password webauthn"
               className="bg-input/50 h-11"
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full h-11">
+          <Button type="submit" disabled={loading || passkeyLoading} className="w-full h-11">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -83,6 +118,33 @@ function LoginPage() {
             )}
           </Button>
         </form>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">Or</span>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handlePasskeySignIn}
+          disabled={loading || passkeyLoading}
+          className="w-full h-11"
+        >
+          {passkeyLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              <Fingerprint className="mr-2 h-4 w-4" />
+              Sign in with Passkey
+            </>
+          )}
+        </Button>
       </div>
       <div className="mt-6 p-4 border border-border text-center">
         <p className="text-sm text-muted-foreground">

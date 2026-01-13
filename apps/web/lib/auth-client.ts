@@ -1,10 +1,11 @@
 import { createAuthClient } from "better-auth/react";
 import { apiKeyClient } from "better-auth/client/plugins";
 import { getPublicServerUrl } from "./utils";
+import { passkeyClient } from "@better-auth/passkey/client";
 
 export const authClient = createAuthClient({
   baseURL: getPublicServerUrl(),
-  plugins: [apiKeyClient()],
+  plugins: [apiKeyClient(), passkeyClient()],
 });
 
 export const { signIn, signOut, useSession } = authClient;

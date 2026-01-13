@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, uuid, jsonb, primaryKey, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, uuid, jsonb, primaryKey, integer, index } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 export type UserPreferences = {
   emailNotifications?: boolean;
@@ -21,7 +22,9 @@ export const users = pgTable("users", {
   company: text("company"),
   lastActiveAt: timestamp("last_active_at"),
   gitEmail: text("git_email"),
-  defaultRepositoryVisibility: text("default_repository_visibility", { enum: ["public", "private"] }).notNull().default("public"),
+  defaultRepositoryVisibility: text("default_repository_visibility", { enum: ["public", "private"] })
+    .notNull()
+    .default("public"),
   preferences: jsonb("preferences").$type<UserPreferences>(),
   socialLinks: jsonb("social_links").$type<{
     github?: string;
@@ -127,3 +130,58 @@ export const apiKeys = pgTable("api_key", {
   permissions: text("permissions"),
   metadata: jsonb("metadata"),
 });
+
+export const passkeys = pgTable(
+  "passkey",
+  {
+    id: text("id").primaryKey(),
+    name: text("name"),
+    publicKey: text("public_key").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credentialID: text("credential_id").notNull(),
+    counter: integer("counter").notNull(),
+    deviceType: text("device_type").notNull(),
+    backedUp: boolean("backed_up").notNull(),
+    transports: text("transports"),
+    createdAt: timestamp("created_at"),
+    aaguid: text("aaguid"),
+  },
+  (table) => [index("passkey_userId_idx").on(table.userId), index("passkey_credentialID_idx").on(table.credentialID)]
+);
+
+export const passkeyRelations = relations(passkeys, ({ one }) => ({
+  user: one(users, {
+    fields: [passkeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userRelations = relations(users, ({ many }) => ({
+  sessions: many(sessions),
+  accounts: many(accounts),
+  apikeys: many(apiKeys),
+  passkeys: many(passkeys),
+}));
+
+export const sessionRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const accountRelations = relations(accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const apiKeyRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+}));

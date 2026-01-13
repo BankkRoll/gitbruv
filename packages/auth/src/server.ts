@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { apiKey } from "better-auth/plugins";
-import { db, users, sessions, accounts, verifications, apiKeys } from "@gitbruv/db";
+import { db, users, sessions, accounts, verifications, apiKeys, passkeys } from "@gitbruv/db";
 import { APIError } from "better-auth/api";
 import { expo } from "@better-auth/expo";
+import { passkey } from "@better-auth/passkey";
 
 const normalizeUrl = (url: string) => {
   if (url.startsWith("http")) return url;
@@ -87,7 +88,7 @@ function isBlockedEmailDomain(email: string): boolean {
   return BLOCKED_EMAIL_DOMAINS.includes(domain);
 }
 
-const getBaseURL = (): string => {
+const getApiUrl = (): string => {
   if (process.env.BETTER_AUTH_URL) {
     return normalizeUrl(process.env.BETTER_AUTH_URL);
   }
@@ -105,6 +106,18 @@ const getBaseURL = (): string => {
   }
 
   return "http://localhost:3001";
+};
+
+const getWebUrl = (): string => {
+  if (process.env.BETTER_AUTH_URL) {
+    return normalizeUrl(process.env.BETTER_AUTH_URL);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("BETTER_AUTH_URL or RAILWAY_PUBLIC_DOMAIN must be set in production");
+  }
+
+  return "http://localhost:3000";
 };
 
 const getTrustedOrigins = (): string[] => {
@@ -134,7 +147,7 @@ const getTrustedOrigins = (): string[] => {
 };
 
 export const auth = betterAuth({
-  baseURL: getBaseURL(),
+  baseURL: getApiUrl(),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -143,6 +156,7 @@ export const auth = betterAuth({
       account: accounts,
       verification: verifications,
       apikey: apiKeys,
+      passkey: passkeys,
     },
   }),
   trustedOrigins: getTrustedOrigins(),
@@ -155,6 +169,26 @@ export const auth = betterAuth({
       defaultPrefix: "gitbruv_",
     }),
     expo({}),
+    passkey({
+      rpID:
+        process.env.NODE_ENV === "production"
+          ? (() => {
+              const url = getWebUrl();
+              try {
+                return new URL(url).hostname;
+              } catch {
+                return "localhost";
+              }
+            })()
+          : "localhost",
+      rpName: "gitbruv",
+      origin: getWebUrl(),
+      authenticatorSelection: {
+        authenticatorAttachment: undefined,
+        residentKey: "preferred",
+        userVerification: "preferred",
+      },
+    }),
   ],
   user: {
     additionalFields: {

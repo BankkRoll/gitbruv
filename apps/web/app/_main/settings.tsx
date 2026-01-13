@@ -3,6 +3,7 @@ import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { useSession } from "@/lib/auth-client";
 import { useCurrentUser, useUpdateProfile, useUpdatePreferences } from "@gitbruv/hooks";
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from "@/lib/hooks/use-api-keys";
+import { usePasskeys, useAddPasskey, useDeletePasskey } from "@/lib/hooks/use-passkeys";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { SocialLinksForm } from "@/components/settings/social-links-form";
@@ -16,9 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, User, Shield, Key, Plus, Trash2, Copy, Check, AlertTriangle, Lock, Globe, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, User, Shield, Key, Plus, Trash2, Copy, Check, AlertTriangle, Lock, Globe, Settings as SettingsIcon, Fingerprint } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getGitUrl } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_main/settings")({
   component: SettingsPage,
@@ -31,6 +33,14 @@ type ApiKey = {
   start: string | null;
   createdAt: string;
   expiresAt: string | null;
+};
+
+type Passkey = {
+  id: string;
+  name: string | null;
+  deviceType: string;
+  createdAt: string;
+  backedUp: boolean;
 };
 
 function ProfileTab() {
@@ -337,6 +347,178 @@ function PreferencesForm({ user }: { user: NonNullable<ReturnType<typeof useCurr
   );
 }
 
+function SecurityTab() {
+  const { data, isLoading: userLoading } = useCurrentUser();
+  const user = data?.user;
+  const { data: passkeys, isLoading: passkeysLoading, refetch: refetchPasskeys } = usePasskeys();
+  const { mutate: addPasskey, isPending: isAdding } = useAddPasskey();
+  const { mutate: deletePasskey, isPending: isDeleting } = useDeletePasskey();
+
+  const [newPasskeyName, setNewPasskeyName] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deletePasskeyId, setDeletePasskeyId] = useState<string | null>(null);
+
+  if (userLoading || passkeysLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  function handleAddPasskey() {
+    addPasskey(
+      { name: newPasskeyName || undefined },
+      {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          setNewPasskeyName("");
+          refetchPasskeys();
+          toast.success("Passkey added successfully");
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : "Failed to add passkey";
+          toast.error(message);
+        },
+      }
+    );
+  }
+
+  function handleDelete(passkeyId: string) {
+    deletePasskey(
+      { passkeyId },
+      {
+        onSuccess: () => {
+          setDeletePasskeyId(null);
+          refetchPasskeys();
+          toast.success("Passkey deleted successfully");
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : "Failed to delete passkey";
+          toast.error(message);
+        },
+      }
+    );
+  }
+
+  function handleCloseCreate() {
+    setIsCreateOpen(false);
+    setNewPasskeyName("");
+  }
+
+  return (
+    <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Passkeys</CardTitle>
+          <CardDescription>
+            Use passkeys for secure, passwordless authentication. Sign in with biometrics, PINs, or security keys.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="bg-muted/50 p-4 space-y-2">
+            <p className="text-sm font-medium">What are passkeys?</p>
+            <p className="text-sm text-muted-foreground">
+              Passkeys are a secure alternative to passwords. They use cryptographic keys stored on your device, allowing you to sign in with biometrics, PINs, or security keys without entering a password.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Your Passkeys</h3>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger>
+                <Button size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Passkey
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Passkey</DialogTitle>
+                  <DialogDescription>Register a new passkey for your account. You'll be prompted to authenticate with your device.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="passkey-name">Passkey Name (Optional)</Label>
+                    <Input
+                      id="passkey-name"
+                      value={newPasskeyName}
+                      onChange={(e) => setNewPasskeyName(e.target.value)}
+                      placeholder="e.g., My Laptop, iPhone"
+                    />
+                    <p className="text-xs text-muted-foreground">Give your passkey a name to remember what device it's for.</p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={handleCloseCreate} disabled={isAdding}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddPasskey} disabled={isAdding}>
+                    {isAdding && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Register Passkey
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {passkeys && passkeys.length > 0 ? (
+            <div className="border divide-y">
+              {passkeys.map((passkey: Passkey) => (
+                <div key={passkey.id} className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <Fingerprint className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">{passkey.name || "Unnamed Passkey"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {passkey.deviceType} · Created {new Date(passkey.createdAt).toLocaleDateString()}
+                        {passkey.backedUp && " · Backed up"}
+                      </p>
+                    </div>
+                  </div>
+                  <Dialog open={deletePasskeyId === passkey.id} onOpenChange={(open) => setDeletePasskeyId(open ? passkey.id : null)}>
+                    <DialogTrigger>
+                      <Button variant="ghost" size="icon">
+                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete Passkey</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to delete this passkey? You'll no longer be able to sign in with it.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeletePasskeyId(null)} disabled={isDeleting}>
+                          Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={() => handleDelete(passkey.id)} disabled={isDeleting}>
+                          {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Delete Passkey
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 border border-dashed bg-muted/30">
+              <Fingerprint className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No passkeys yet. Add one to get started.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function TokensTab() {
   const { data, isLoading: userLoading } = useCurrentUser();
   const user = data?.user;
@@ -549,7 +731,7 @@ Password: <your-token>`}
 function SettingsPage() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
-  const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(["profile", "account", "tokens"]).withDefault("profile"));
+  const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(["profile", "account", "security", "tokens"]).withDefault("profile"));
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -572,7 +754,7 @@ function SettingsPage() {
   return (
     <div className="max-w-xl mx-auto py-8 px-4 sm:px-0!">
       <h1 className="text-2xl font-semibold mb-8">Settings</h1>
-      <Tabs value={tab} onValueChange={(value) => setTab(value === "profile" ? null : (value as "account" | "tokens"))}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value === "profile" ? null : (value as "account" | "security" | "tokens"))}>
         <TabsList variant="default" className="w-full mb-6 h-12">
           <TabsTrigger value="profile">
             <User className="h-4 w-4" />
@@ -581,6 +763,10 @@ function SettingsPage() {
           <TabsTrigger value="account">
             <Shield className="h-4 w-4" />
             Account
+          </TabsTrigger>
+          <TabsTrigger value="security">
+            <Fingerprint className="h-4 w-4" />
+            Security
           </TabsTrigger>
           <TabsTrigger value="tokens">
             <Key className="h-4 w-4" />
@@ -594,6 +780,10 @@ function SettingsPage() {
 
         <TabsContent value="account" className="mt-0">
           <AccountTab />
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-0">
+          <SecurityTab />
         </TabsContent>
 
         <TabsContent value="tokens" className="mt-0">
